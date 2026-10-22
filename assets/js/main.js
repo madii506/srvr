@@ -40,7 +40,7 @@ snd.addEventListener('click', () => {
 // ---------------------------------------------------------------- the gate
 function enter() {
   if (started || !ready) return; started = true; sess.set('srvr:in', '1');
-  if (soundOn) playMusic();
+  // no sound on the way in: the intro plays silent, music is only ever switched on from the corner
   if (world && world.peek) world.peek(true);   // its eyes open the moment you press
   body.classList.add('woke');
   setTimeout(() => { body.classList.remove('boot', 'gate'); body.classList.add('intro'); if (world) world.go(); }, 420);
