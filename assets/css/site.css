@@ -66,6 +66,8 @@ body.boot .nav,body.intro .nav{opacity:0;transform:translateY(-8px);pointer-even
 .stage canvas,.stage .still{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
 .veil{position:absolute;inset:0;background:var(--bg);opacity:0;will-change:opacity}
 .hero,main{position:relative;z-index:1}
+/* while the room is up, nothing of the page shows through it */
+body.boot main,body.boot .hero{visibility:hidden}
 html.over-block,html.over-block body{cursor:pointer}
 .hero{height:100svh;min-height:600px;overflow:hidden}
 .hero-in{position:absolute;left:clamp(24px,7vw,128px);top:50%;transform:translateY(calc(-52% + var(--py,0px)));opacity:var(--po,1);max-width:min(46vw,640px);pointer-events:none;z-index:2;will-change:transform}
