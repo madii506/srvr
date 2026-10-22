@@ -21,6 +21,10 @@ body.gate #boot{background-color:rgba(10,10,12,0)}
 #boot::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 64% 58% at 50% 47%,rgba(10,10,12,0) 0,rgba(10,10,12,.5) 72%,rgba(10,10,12,.92) 100%);opacity:0;transition:opacity 1.8s ease;pointer-events:none}
 body.gate #boot::before{opacity:1}
 body.gate #boot .eyes{opacity:0;transition:opacity 1.2s ease .25s}
+#boot .eyes{gap:10vh;position:relative;top:2.25vh}
+#boot .eyes span,body.gate #boot .eyes span{width:6.67vh;height:1.9vh;background:var(--a);border-radius:2px;animation:breath 3.4s ease-in-out infinite}
+@media (max-aspect-ratio:21/20){#boot .eyes{gap:6.9vh;top:1.55vh}#boot .eyes span,body.gate #boot .eyes span{width:4.6vh;height:1.3vh}}
+.enter{color:var(--g)}.enter svg{display:block}
 #boot .eyes{display:flex;gap:12vh;align-items:center;height:14vh}
 #boot .eyes span{width:8vh;height:13.4vh;background:var(--g);border-radius:3px;animation:blink 2.4s infinite steps(1);transition:height .35s cubic-bezier(.2,.9,.25,1.2),background .3s}
 /* the gate: the eyes fall asleep (amber, breathing) until you enter */
@@ -43,7 +47,7 @@ body.woke .enter{opacity:0;transform:translate(-50%,8px);pointer-events:none;tra
 /* sound: a small switch in the corner once you're in */
 .snd{position:fixed;right:14px;top:9px;z-index:45;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(10,10,12,.6);display:flex;align-items:center;justify-content:center;gap:2px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .5s,border-color .2s}
 .snd:hover{border-color:var(--line2)}
-body:not(.boot) .snd{opacity:1;pointer-events:auto}
+body.ready .snd{opacity:1;pointer-events:auto}
 .snd b{height:3px;animation-play-state:paused;background:var(--dim)}
 .snd.on b{animation-play-state:running;background:var(--g)}
 @media (pointer:coarse){.snd{width:44px;height:44px;top:7px}}
