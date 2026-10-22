@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>srvr</title>
+<meta name="description" content="every coin gets its own server. launch a coin on pump.fun, lock its fees to the server's rent, and let holders in.">
+<meta name="theme-color" content="#0a0a0c">
+<meta property="og:type" content="website">
+<meta property="og:title" content="srvr">
+<meta property="og:description" content="every coin gets its own server.">
+<meta property="og:image" content="https://srvr-fun.vercel.app/assets/img/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://srvr-fun.vercel.app/assets/img/og.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+<link rel="preload" href="/assets/fonts/jbm.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="modulepreload" href="/assets/vendor/three.module.min.js">
+<link rel="stylesheet" href="/assets/css/site.css?v=1">
+<script src="/assets/vendor/lenis.min.js" defer></script>
+<script src="/assets/js/config.js?v=1"></script>
+</head>
+<body class="boot">
+<div id="boot" aria-hidden="true"><span></span><span></span></div>
+<div class="stage" aria-hidden="true"><canvas id="world"></canvas><img class="still" src="/assets/img/hero-still.jpg" alt="" hidden><div class="veil" id="veil"></div></div>
+
+<nav class="nav" aria-label="sections">
+  <div></div>
+  <div class="links">
+    <a href="#how">how</a><a href="#launch">launch</a><a href="#servers">servers</a><a href="#join">join</a><a href="#ping">ping</a><a href="#owners">owners</a><a href="#faq">faq</a>
+  </div>
+  <div></div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-in">
+    <h1 class="wm" aria-label="srvr."><span>s</span><span>r</span><span>v</span><span>r</span><i>.</i></h1>
+    <p class="sub">every coin gets its own server.</p>
+    <div class="cta"><a class="btn pri" href="#launch">launch a server</a><a class="btn" href="#ping">ping a server</a></div>
+    <div class="ca" id="ca" hidden></div>
+  </div>
+</header>
+
+<div class="marq" aria-hidden="true"><div class="mq" id="mq"><span>launch<i></i>lock the rent<i></i>hold to join<i></i>sell, and the door shuts<i></i></span><span>launch<i></i>lock the rent<i></i>hold to join<i></i>sell, and the door shuts<i></i></span><span>launch<i></i>lock the rent<i></i>hold to join<i></i>sell, and the door shuts<i></i></span></div></div>
+<main>
+  <section class="how" id="how">
+    <div class="how-pin">
+      <div class="how-txt">
+        <p class="eb">01 — how it works <span class="hcount" id="hCount">01 / 04</span></p>
+        <h2 class="noreveal">a coin, a server, and a door only holders can open.</h2>
+        <ol class="hsteps" id="hSteps">
+          <li class="on"><b>launch</b><p>name it, draw it, point it at your server. it goes live on pump.fun from your own wallet.</p></li>
+          <li><b>lock the rent</b><p>the coin's creator fees are routed to the server's wallet at launch, and the split is locked on chain. nobody can change it after, not even you.</p></li>
+          <li><b>hold to join</b><p>holders sign with their wallet and add their game name. the server pulls its whitelist from srvr every two minutes.</p></li>
+          <li><b>sell, and the door shuts</b><p>every sync reads the chain again. wallets that sold drop off the list on their own.</p></li>
+        </ol>
+        <div class="hbar"><i id="hBar"></i></div>
+        <div class="legend">
+          <span><i class="gl on"></i>players on</span><span><i class="gl sleep"></i>online, empty</span><span><i class="gl off"></i>offline</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band dim" id="launch">
+    <div class="wrap">
+      <p class="eb">02 — launch</p>
+      <h2>launch a coin for your server.</h2>
+      <div class="launch">
+        <form class="form" id="lf" autocomplete="off" novalidate>
+          <div class="pic" id="pic" tabindex="0" role="button" aria-label="add a picture"><img id="picImg" alt="" hidden><span class="pic-e"><i class="gl on"></i></span><input type="file" id="picIn" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>
+          <div class="row2">
+            <label><span>name</span><input id="fName" maxlength="32" placeholder="block party"></label>
+            <label><span>ticker</span><input id="fSym" maxlength="11" placeholder="PARTY"></label>
+          </div>
+          <label><span>server address</span><input id="fSrv" maxlength="80" placeholder="play.yourserver.net" inputmode="url" autocapitalize="off" spellcheck="false"><small class="srvst" id="fSrvSt"></small></label>
+          <label><span>rent wallet <em>gets 100% of the coin's creator fees</em></span><input id="fRent" maxlength="44" placeholder="your wallet" autocapitalize="off" spellcheck="false"></label>
+          <label><span>about <em>optional</em></span><textarea id="fDesc" maxlength="280" rows="2" placeholder="what's on the server"></textarea></label>
+          <div class="row2">
+            <label><span>x <em>optional</em></span><input id="fX" maxlength="80" placeholder="@yourserver" autocapitalize="off" spellcheck="false"></label>
+            <label><span>first buy <em>sol, optional</em></span><input id="fBuy" inputmode="decimal" maxlength="6" placeholder="0"><small id="fQuote"></small></label>
+          </div>
+          <div class="wallets" id="lfWal"></div>
+          <button class="btn pri wide" id="lfGo" type="submit">connect a wallet</button>
+          <p class="err" id="lfErr" role="alert"></p>
+        </form>
+        <div class="trail" id="lfTrail" aria-live="polite">
+          <ol class="tsteps" id="lfSteps"></ol>
+          <div class="done" id="lfDone" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="servers">
+    <div class="wrap">
+      <p class="eb">03 — servers <span class="live" id="bdLive"></span></p>
+      <h2>every coin launched here, and its server right now.</h2>
+      <div class="board" id="board"></div>
+    </div>
+  </section>
+
+  <section class="band dim" id="join">
+    <div class="wrap">
+      <p class="eb">04 — join</p>
+      <h2>hold the coin, get the keys.</h2>
+      <form class="form join" id="jf" autocomplete="off" novalidate>
+        <label><span>coin</span><select id="jCoin"></select></label>
+        <label class="jmint" hidden><span>coin address</span><input id="jMint" maxlength="44" placeholder="the coin's address" autocapitalize="off" spellcheck="false"></label>
+        <label><span>game name</span><input id="jName" maxlength="16" placeholder="Steve" autocapitalize="off" spellcheck="false"><small id="jNameSt"></small></label>
+        <div class="wallets" id="jfWal"></div>
+        <button class="btn pri wide" id="jGo" type="submit">connect a wallet</button>
+        <p class="err" id="jErr" role="alert"></p>
+        <div class="done" id="jDone" hidden></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="band" id="ping">
+    <div class="wrap">
+      <p class="eb">05 — ping</p>
+      <h2>ping any server.</h2>
+      <form class="pingf" id="pf" autocomplete="off">
+        <input id="pQ" maxlength="80" placeholder="play.example.net" aria-label="server address" autocapitalize="off" spellcheck="false" inputmode="url">
+        <button class="btn pri" type="submit">ping</button>
+      </form>
+      <div class="chips" id="pChips"><button type="button" data-q="mc.hypixel.net">mc.hypixel.net</button><button type="button" data-q="play.cubecraft.net">play.cubecraft.net</button><button type="button" data-q="play.wynncraft.com">play.wynncraft.com</button><button type="button" data-q="2b2t.org">2b2t.org</button></div>
+      <div class="pcard" id="pCard" hidden></div>
+    </div>
+  </section>
+
+  <section class="band dim" id="owners">
+    <div class="wrap">
+      <p class="eb">06 — for server owners</p>
+      <h2>one file in /plugins.</h2>
+      <div class="own">
+        <ol class="ownsteps">
+          <li><b>download srvr.jar</b><p>it's built for your coin, with its address already inside.</p></li>
+          <li><b>drop it in /plugins and restart</b><p>paper, spigot or purpur, 1.13 and up.</p></li>
+          <li><b>that's it</b><p>it turns the whitelist on, adds every holder who joined, and removes anyone who sold. every two minutes. <code>/srvr</code> shows the last sync.</p></li>
+        </ol>
+        <div class="ownbox">
+          <label><span>your coin</span><select id="oCoin"></select></label>
+          <label class="omint" hidden><span>coin address</span><input id="oMint" maxlength="44" placeholder="the coin's address" autocapitalize="off" spellcheck="false"></label>
+          <a class="btn pri wide" id="oJar" href="/api/plugin" download>download srvr.jar</a>
+          <div class="ownlinks"><a href="/api/plugin?f=java&amp;view=1" target="_blank" rel="noopener">read the source ↗</a><a href="/api/plugin?f=src" download>source zip</a><a id="oFeed" href="/api/whitelist" target="_blank" rel="noopener">whitelist feed ↗</a></div>
+          <p class="minor">no plugin? pull the same list with cron:</p>
+          <pre class="code" id="oCron"></pre>
+          <button class="btn sm" type="button" id="oCopy">copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <div class="wrap">
+      <p class="eb">07 — faq</p>
+      <h2>questions.</h2>
+      <div class="faq">
+        <details><summary>what is srvr?</summary><p>a launchpad on pump.fun where every coin comes with its own game server. the coin's creator fees pay the server's rent, and holding the coin is the key to get in.</p></details>
+        <details><summary>does srvr host my server?</summary><p>no. you run your server wherever you like, on any host or your own machine. srvr launches the coin, locks where its fees go, and keeps your whitelist in sync with who holds.</p></details>
+        <details><summary>where do the fees go?</summary><p>all of the coin's pump.fun creator fees go to the rent wallet you set at launch. the split is written on chain with pump.fun's fee sharing and its admin is revoked in the same launch, so it can't be changed later. anyone can push waiting fees to the rent wallet with "pay the rent" on the coin's page.</p></details>
+        <details><summary>does srvr take a cut?</summary><p>no. srvr adds no fee to launches, trades or joins. pump.fun charges its usual fees.</p></details>
+        <details><summary>who can join a server?</summary><p>anyone who holds the coin and links a wallet and a game name. joining is free: you sign a message, not a transaction.</p></details>
+        <details><summary>what happens if i sell?</summary><p>the next sync reads the chain again. if your wallet no longer holds the coin, you drop off the whitelist, and you're kicked if you're online and the server has that switched on.</p></details>
+        <details><summary>is the plugin safe to run?</summary><p>it reads one address (your coin's whitelist feed) and adds or removes whitelist entries. nothing else. the source is public, so read it before you install it.</p></details>
+        <details><summary>which servers does it work with?</summary><p>java edition servers running paper, spigot or purpur 1.13 or newer. any server can also pull the feed with cron. ping works on any java edition server.</p></details>
+        <details><summary>is srvr affiliated with mojang, microsoft or pump.fun?</summary><p>no. srvr is independent. servers that charge for access or perks should follow mojang's usage guidelines.</p></details>
+        <details><summary>is this financial advice?</summary><p>no. coins are risky and can go to zero. only use what you can lose.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog class="sheet" id="sheet" aria-label="coin" data-lenis-prevent>
+  <button class="x" type="button" id="sheetX" aria-label="close">✕</button>
+  <div id="sheetIn"></div>
+</dialog>
+<div class="sr" aria-live="polite" id="sr"></div>
+<script type="module" src="/assets/js/main.js?v=1"></script>
+</body>
+</html>

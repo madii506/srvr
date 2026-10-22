@@ -1,0 +1,26 @@
+{
+  "cleanUrls": true,
+  "functions": {
+    "api/coin.js": { "maxDuration": 30 },
+    "api/build.js": { "maxDuration": 30 },
+    "api/settle.js": { "maxDuration": 30 },
+    "api/meta.js": { "maxDuration": 15 },
+    "api/rpc.js": { "maxDuration": 30 },
+    "api/feed.js": { "maxDuration": 30 },
+    "api/ping.js": { "maxDuration": 20 },
+    "api/join.js": { "maxDuration": 30 },
+    "api/whitelist.js": { "maxDuration": 30 },
+    "api/plugin.js": { "maxDuration": 15 }
+  },
+  "rewrites": [
+    { "source": "/m/:id", "destination": "/api/meta?id=:id" },
+    { "source": "/i/:id", "destination": "/api/meta?img=:id" },
+    { "source": "/s/:mint", "destination": "/index.html" }
+  ],
+  "headers": [
+    { "source": "/assets/fonts/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+    { "source": "/assets/vendor/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+    { "source": "/assets/(css|js|img)/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=60, must-revalidate" }] },
+    { "source": "/(.*)", "headers": [{ "key": "X-Content-Type-Options", "value": "nosniff" }, { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }] }
+  ]
+}
