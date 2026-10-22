@@ -15,12 +15,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 [hidden]{display:none!important}
 
 /* ---------- boot: two eyes in the dark, then the world takes over ---------- */
-#boot{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,background-color 1.8s ease}
+#boot{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,background-color .8s ease}
 /* once the world is ready the boot screen opens onto it: srvr asleep in a dark room, the edges falling off to black */
 body.gate #boot{background-color:rgba(10,10,12,0)}
-#boot::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 64% 58% at 50% 47%,rgba(10,10,12,0) 0,rgba(10,10,12,.5) 72%,rgba(10,10,12,.92) 100%);opacity:0;transition:opacity 1.8s ease;pointer-events:none}
+#boot::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 64% 58% at 50% 47%,rgba(10,10,12,0) 0,rgba(10,10,12,.5) 72%,rgba(10,10,12,.92) 100%);opacity:0;transition:opacity .8s ease;pointer-events:none}
 body.gate #boot::before{opacity:1}
-body.gate #boot .eyes{opacity:0;transition:opacity 1.2s ease .25s}
+body.gate #boot .eyes{opacity:0;transition:opacity .7s ease .1s}
 #boot .eyes{gap:10vh;position:relative;top:2.25vh}
 #boot .eyes span,body.gate #boot .eyes span{width:6.67vh;height:1.9vh;background:var(--a);border-radius:2px;animation:breath 3.4s ease-in-out infinite}
 @media (max-aspect-ratio:21/20){#boot .eyes{gap:6.9vh;top:1.55vh}#boot .eyes span,body.gate #boot .eyes span{width:4.6vh;height:1.3vh}}
