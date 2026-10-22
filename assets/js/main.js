@@ -6,8 +6,11 @@ const body = document.body, root = document.documentElement, reduced = matchMedi
 const canvas = document.getElementById('world'), enterBtn = document.getElementById('enter');
 const keep = (st => ({ get: k => { try { return st().getItem(k); } catch { return null; } }, set: (k, v) => { try { st().setItem(k, v); } catch {} } }));
 const local = keep(() => localStorage), sess = keep(() => sessionStorage);
-// no gate and no intro on a shared coin link, a section link, a repeat visit in this tab, or with reduced motion
-const quick = reduced || /^\/s\//.test(location.pathname) || location.hash.length > 1 || sess.get('srvr:in') === '1' || new URLSearchParams(location.search).has('skip');
+// the room and the intro play on every visit and every reload; only a shared coin link, a section link, ?skip or
+// reduced motion go straight to the page
+const quick = reduced || /^\/s\//.test(location.pathname) || location.hash.length > 1 || new URLSearchParams(location.search).has('skip');
+// a reload never lands halfway down the page behind the room: the intro always starts at the top
+if (!quick) { try { history.scrollRestoration = 'manual'; } catch {} scrollTo(0, 0); }
 let world = null, fell = false, ready = false, started = false;
 const text = () => body.classList.add('text');
 const done = () => { text(); body.classList.remove('intro', 'boot', 'gate'); body.classList.add('ready'); };
