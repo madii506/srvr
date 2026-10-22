@@ -15,17 +15,27 @@ button,input,select,textarea{font:inherit;color:inherit}
 [hidden]{display:none!important}
 
 /* ---------- boot: two eyes in the dark, then the world takes over ---------- */
-#boot{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease}
+#boot{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,background-color 1.8s ease}
+/* once the world is ready the boot screen opens onto it: srvr asleep in a dark room, the edges falling off to black */
+body.gate #boot{background-color:rgba(10,10,12,0)}
+#boot::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 64% 58% at 50% 47%,rgba(10,10,12,0) 0,rgba(10,10,12,.5) 72%,rgba(10,10,12,.92) 100%);opacity:0;transition:opacity 1.8s ease;pointer-events:none}
+body.gate #boot::before{opacity:1}
+body.gate #boot .eyes{opacity:0;transition:opacity 1.2s ease .25s}
 #boot .eyes{display:flex;gap:12vh;align-items:center;height:14vh}
 #boot .eyes span{width:8vh;height:13.4vh;background:var(--g);border-radius:3px;animation:blink 2.4s infinite steps(1);transition:height .35s cubic-bezier(.2,.9,.25,1.2),background .3s}
 /* the gate: the eyes fall asleep (amber, breathing) until you enter */
 body.gate #boot .eyes span{height:1.4vh;background:var(--a);animation:breath 3.4s ease-in-out infinite}
 body.woke #boot .eyes span{height:13.4vh;background:var(--g);animation:none}
 @keyframes breath{50%{opacity:.45;transform:scaleX(.86)}}
-.enter{position:absolute;left:50%;top:calc(50% + 15vh);transform:translate(-50%,8px);opacity:0;display:inline-flex;align-items:center;gap:12px;min-height:50px;padding:0 24px 0 20px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.03);font:600 15px/1 var(--mono);letter-spacing:.02em;cursor:pointer;transition:opacity .6s ease,transform .6s ease,border-color .2s,background .2s}
+.enter{position:absolute;left:50%;bottom:clamp(36px,8.5vh,92px);transform:translate(-50%,8px);opacity:0;display:inline-flex;align-items:center;justify-content:center;width:66px;height:66px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(10,10,12,.7);font:600 15px/1 var(--mono);letter-spacing:.06em;cursor:pointer;transition:opacity 1s ease .9s,transform 1s ease .9s,border-color .25s,background .25s,color .25s}
+.enter::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:1px solid var(--g);opacity:0;animation:ring 3.4s ease-out infinite 1.6s;pointer-events:none}
+@keyframes ring{0%{opacity:.5;transform:scale(1)}70%,100%{opacity:0;transform:scale(1.18,1.42)}}
 body.gate .enter{opacity:1;transform:translate(-50%,0)}
-.enter:hover,.enter:focus-visible{border-color:var(--g);background:rgba(62,224,143,.08);outline:none}
-body.woke .enter{opacity:0;transform:translate(-50%,8px);pointer-events:none}
+.enter .eq{height:18px;gap:3px}.enter .eq b{width:3px}
+body.gate #boot{cursor:pointer}
+.enter:hover,.enter:focus-visible{border-color:var(--g);background:rgba(62,224,143,.1);color:#d9ffe9;outline:none}
+.enter:hover::after,.enter:focus-visible::after{animation:none}
+body.woke .enter{opacity:0;transform:translate(-50%,8px);pointer-events:none;transition:opacity .35s ease,transform .35s ease}
 .eq{display:inline-flex;align-items:flex-end;gap:2px;height:14px}
 .eq b,.snd b{display:block;width:3px;background:var(--g);border-radius:1px;height:4px;animation:eq 1.1s ease-in-out infinite}
 .eq b:nth-child(2),.snd b:nth-child(2){animation-delay:-.4s}.eq b:nth-child(3),.snd b:nth-child(3){animation-delay:-.7s}.eq b:nth-child(4),.snd b:nth-child(4){animation-delay:-.2s}
@@ -296,7 +306,7 @@ html.lenis,html.lenis body{height:auto}
 /* ---------- 01 how: pinned while the camera visits each step ---------- */
 .how{height:460vh;border-top:0}
 .how-pin{position:sticky;top:0;height:100svh;display:flex;align-items:center;overflow:hidden}
-.how-pin::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,12,.88) 0,rgba(10,10,12,.55) 34%,rgba(10,10,12,0) 56%);pointer-events:none}
+.how-pin::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,12,.94) 0,rgba(10,10,12,.9) calc(clamp(24px,7vw,128px) + min(440px,40vw) - 40px),rgba(10,10,12,.5) calc(clamp(24px,7vw,128px) + min(440px,40vw) + 70px),rgba(10,10,12,0) calc(clamp(24px,7vw,128px) + min(440px,40vw) + 230px));pointer-events:none}
 .how-txt{width:min(440px,40vw);margin-left:clamp(24px,7vw,128px);position:relative}
 .how-txt h2{margin:18px 0 30px;font-size:clamp(26px,3vw,40px)}
 .hcount{color:var(--g);margin-left:auto;font-variant-numeric:tabular-nums}
@@ -324,6 +334,7 @@ h2.reveal{opacity:1;transform:none}
 @media (max-width:760px){
   .how{height:420vh}
   .how-pin{align-items:flex-end}
+  .how-pin::before{display:none}
   .how-txt{width:100%;margin:0;padding:80px 20px 26px;background:linear-gradient(180deg,rgba(10,10,12,0),rgba(10,10,12,.92) 30%,var(--bg))}
   .how-txt h2{display:none}
   .hsteps li{display:none;padding-left:40px}
@@ -367,13 +378,12 @@ html.cur-on select{cursor:pointer!important}
 .hsteps li.on:hover{opacity:1}
 .hsteps li:focus-visible{outline:1px solid var(--g);outline-offset:2px}
 /* launch: the live preview */
-.pv{border:1px solid var(--line2);border-radius:18px;padding:16px;margin-bottom:22px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01));display:grid;gap:12px;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s ease-out,border-color .3s;will-change:transform}
+.pv{border:1px solid var(--line2);border-radius:18px;padding:16px;margin-bottom:22px;background:linear-gradient(180deg,#121317,#0c0d10);display:grid;gap:12px;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s ease-out,border-color .3s;will-change:transform}
 .pv:hover{border-color:rgba(62,224,143,.35)}
 .pv-top{display:flex;gap:14px;align-items:center}
 .pv-top img{width:56px;height:56px;border-radius:14px;object-fit:cover;background:#16181c;flex:none}
 .pv-top b{display:block;font:700 18px/1.2 var(--sans);letter-spacing:-.02em;max-width:22ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pv-top small{font:500 13px/1.2 var(--mono);color:var(--g)}
-.pv-tag{margin-left:auto;font:500 11px/1 var(--mono);color:var(--dim2);border:1px solid var(--line);padding:6px 8px;border-radius:999px}
 .pv-row{display:flex;gap:10px;align-items:center;font:500 13px/1.3 var(--mono);color:var(--dim);flex-wrap:wrap}
 .pv-row em{font-style:normal;color:var(--dim2);margin-left:auto}
 .pv-row #pvSrv{color:var(--ink);word-break:break-all}
@@ -416,3 +426,13 @@ html.cur-on select{cursor:pointer!important}
 .faq details.hide{display:none}
 .faq mark{background:rgba(62,224,143,.22);color:inherit;border-radius:3px;padding:0 2px}
 .pcard,.ownbox{transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s ease-out}
+/* the end: the whole archipelago, one line, one button */
+.end{min-height:100svh;display:grid;place-items:end center;padding:0 20px clamp(64px,12vh,120px);position:relative;text-align:center}
+.end::before{content:"";position:absolute;inset:auto 0 0;height:46%;background:linear-gradient(180deg,rgba(10,10,12,0),rgba(10,10,12,.72));pointer-events:none}
+.end-in{position:relative;display:grid;justify-items:center;gap:clamp(22px,3.4vh,34px)}
+.end-l{font:700 clamp(34px,6.2vw,92px)/.98 var(--sans);letter-spacing:-.045em;max-width:14ch}
+.end-l span{display:inline-block;opacity:0;transform:translateY(.45em);transition:opacity .9s ease,transform 1s cubic-bezier(.2,.8,.2,1)}
+.end-l span+span{transition-delay:.14s;color:var(--g)}
+.end-in .btn{opacity:0;transform:translateY(12px);transition:opacity .8s ease .32s,transform .8s cubic-bezier(.2,.8,.2,1) .32s}
+.end-in.vis .end-l span,.end-in.vis .btn{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.end-l span,.end-in .btn{opacity:1;transform:none;transition:none}}
