@@ -18,7 +18,7 @@
 <link rel="preload" href="/assets/fonts/jbm.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="modulepreload" href="/assets/vendor/three.module.min.js">
-<link rel="stylesheet" href="/assets/css/site.css?v=3">
+<link rel="stylesheet" href="/assets/css/site.css?v=4">
 <script src="/assets/vendor/lenis.min.js" defer></script>
 <script src="/assets/js/config.js?v=1"></script>
 </head>
@@ -90,6 +90,11 @@
           <p class="err" id="lfErr" role="alert"></p>
         </form>
         <div class="trail" id="lfTrail" aria-live="polite">
+          <div class="pv" id="pv">
+            <div class="pv-top"><img id="pvImg" alt=""><div><b id="pvName">your coin</b><small id="pvSym">$TICKER</small></div><span class="pv-tag">preview</span></div>
+            <div class="pv-row"><i class="gl wait" id="pvGl"></i><span id="pvSrv">your server</span><em id="pvSt">waiting for an address</em></div>
+            <div class="pv-row pv-rent"><span>fees</span><b>100%</b><span>→</span><span id="pvRent">your wallet</span><em>locked at launch</em></div>
+          </div>
           <ol class="tsteps" id="lfSteps"></ol>
           <div class="done" id="lfDone" hidden></div>
         </div>
@@ -101,6 +106,7 @@
     <div class="wrap">
       <p class="eb">03 — servers <span class="live" id="bdLive"></span></p>
       <h2>every coin launched here, and its server right now.</h2>
+      <div class="bctl" id="bCtl" hidden><input id="bQ" type="search" placeholder="search coins or servers" aria-label="search the board" autocomplete="off"><div class="seg" id="bSort" role="group" aria-label="sort"><button type="button" data-sort="new" class="on">newest</button><button type="button" data-sort="players">players</button><button type="button" data-sort="mcap">market cap</button><button type="button" data-sort="keys">keys</button></div></div>
       <div class="board" id="board"></div>
     </div>
   </section>
@@ -112,7 +118,7 @@
       <form class="form join" id="jf" autocomplete="off" novalidate>
         <label><span>coin</span><select id="jCoin"></select></label>
         <label class="jmint" hidden><span>coin address</span><input id="jMint" maxlength="44" placeholder="the coin's address" autocapitalize="off" spellcheck="false"></label>
-        <label><span>game name</span><input id="jName" maxlength="16" placeholder="Steve" autocapitalize="off" spellcheck="false"><small id="jNameSt"></small></label>
+        <label class="jn"><span>game name</span><span class="jwrap"><input id="jName" maxlength="16" placeholder="Steve" autocapitalize="off" spellcheck="false"><span class="jhead" id="jHead" aria-hidden="true"><img id="jHeadImg" alt=""></span></span><small id="jNameSt"></small></label>
         <div class="wallets" id="jfWal"></div>
         <button class="btn pri wide" id="jGo" type="submit">connect a wallet</button>
         <p class="err" id="jErr" role="alert"></p>
@@ -148,6 +154,7 @@
           <label><span>your coin</span><select id="oCoin"></select></label>
           <label class="omint" hidden><span>coin address</span><input id="oMint" maxlength="44" placeholder="the coin's address" autocapitalize="off" spellcheck="false"></label>
           <a class="btn pri wide" id="oJar" href="/api/plugin" download>download srvr.jar</a>
+          <div class="cfg"><div class="cfg-h"><span>plugins/srvr/config.yml</span><button class="btn sm" type="button" id="oTest">test the feed</button></div><pre class="code" id="oCfg">…</pre><p class="minor" id="oTestR" aria-live="polite"></p></div>
           <div class="ownlinks"><a href="/api/plugin?f=java&amp;view=1" target="_blank" rel="noopener">read the source ↗</a><a href="/api/plugin?f=src" download>source zip</a><a id="oFeed" href="/api/whitelist" target="_blank" rel="noopener">whitelist feed ↗</a></div>
           <p class="minor">no plugin? pull the same list with cron:</p>
           <pre class="code" id="oCron"></pre>
@@ -161,7 +168,8 @@
     <div class="wrap">
       <p class="eb">07 — faq</p>
       <h2>questions.</h2>
-      <div class="faq">
+      <div class="fsearch"><input id="fQ" type="search" placeholder="search the questions" aria-label="search the questions" autocomplete="off"><small id="fN"></small></div>
+      <div class="faq" id="faqList">
         <details><summary>what is srvr?</summary><p>a launchpad on pump.fun where every coin comes with its own game server. the coin's creator fees pay the server's rent, and holding the coin is the key to get in.</p></details>
         <details><summary>does srvr host my server?</summary><p>no. you run your server wherever you like, on any host or your own machine. srvr launches the coin, locks where its fees go, and keeps your whitelist in sync with who holds.</p></details>
         <details><summary>where do the fees go?</summary><p>all of the coin's pump.fun creator fees go to the rent wallet you set at launch. the split is written on chain with pump.fun's fee sharing and its admin is revoked in the same launch, so it can't be changed later. anyone can push waiting fees to the rent wallet with "pay the rent" on the coin's page.</p></details>
@@ -171,7 +179,6 @@
         <details><summary>is the plugin safe to run?</summary><p>it reads one address (your coin's whitelist feed) and adds or removes whitelist entries. nothing else. the source is public, so read it before you install it.</p></details>
         <details><summary>which servers does it work with?</summary><p>java edition servers running paper, spigot or purpur 1.13 or newer. any server can also pull the feed with cron. ping works on any java edition server.</p></details>
         <details><summary>is srvr affiliated with mojang, microsoft or pump.fun?</summary><p>no. srvr is independent. servers that charge for access or perks should follow mojang's usage guidelines.</p></details>
-        <details><summary>is this financial advice?</summary><p>no. coins are risky and can go to zero. only use what you can lose.</p></details>
       </div>
     </div>
   </section>
@@ -182,6 +189,6 @@
   <div id="sheetIn"></div>
 </dialog>
 <div class="sr" aria-live="polite" id="sr"></div>
-<script type="module" src="/assets/js/main.js?v=4"></script>
+<script type="module" src="/assets/js/main.js?v=5"></script>
 </body>
 </html>
