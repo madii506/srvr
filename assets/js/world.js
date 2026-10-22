@@ -150,7 +150,7 @@ export function mountWorld(canvas, opt = {}) {
     const frameM = new THREE.MeshStandardMaterial({ color: 0x17191d, roughness: 0.6 });
     for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.4, 0.28), frameM); p.position.set(sx * (AW / 2 + 0.75), 1.7, -0.1); room.add(p); }
     const lintel = new THREE.Mesh(new THREE.BoxGeometry(AW + 1.8, 0.28, 0.28), frameM); lintel.position.set(0, 3.4, -0.1); room.add(lintel);
-    const way = glow(G); way.emissiveIntensity = 2;      // the way out: a lit threshold and a lit lintel
+    const way = glow(G); way.emissiveIntensity = 2; way.fog = false;      // the way out: a lit threshold, lintel and posts
     for (const y of [0.012, 3.25]) { const l = new THREE.Mesh(new THREE.BoxGeometry(AW + 1.2, 0.02, 0.06), way); l.position.set(0, y, -0.1); room.add(l); }
     for (const sx of [-1, 1]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.02, 3.24, 0.06), way); l.position.set(sx * (AW / 2 + 0.6), 1.63, -0.1); room.add(l); } }
   // the racks: four shelves of blocks down both sides, every face turned into the aisle
@@ -161,7 +161,7 @@ export function mountWorld(canvas, opt = {}) {
   }
   const NR = RB.length;
   const rackM = new THREE.InstancedMesh(new RoundedBoxGeometry(1, 1, 1, 2, 0.09), shell, NR);
-  const eyeM = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }), NR * 2);
+  const eyeM = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), NR * 2);
   const mouthM = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), dark, NR);
   room.add(rackM, eyeM, mouthM);
   const CG = new THREE.Color(0.32, 1.0, 0.62), CA = new THREE.Color(1.0, 0.68, 0.24), CD = new THREE.Color(0.07, 0.075, 0.085), tmpC = new THREE.Color();
@@ -180,6 +180,7 @@ export function mountWorld(canvas, opt = {}) {
   room.add(panelM, runM);
   // the block on the far wall: the first eyes you see
   const doorB = block(1.0, 'on', 0, 0, 0, 0); room.add(doorB.g); doorB.g.position.set(0, EYE_H + 0.1, AL + 0.5); doorB.g.rotation.y = Math.PI; doorB.land = 1; doorB.base.y = EYE_H + 0.1; doorB.base.ry = Math.PI;
+  const eyeLight = new THREE.PointLight(G, 0, 1.6, 2); eyeLight.position.set(0, EYE_H + 0.2, AL - 0.55); room.add(eyeLight);
 
   // the walk, in room coordinates: start facing the far wall, turn around, walk out of the open end
   const Z0 = AL + 0.5 - 2.25;
@@ -221,14 +222,15 @@ export function mountWorld(canvas, opt = {}) {
     eyeM.instanceMatrix.needsUpdate = true; eyeM.instanceColor.needsUpdate = true;
     // ceiling: a fluorescent flicker, panel by panel
     for (let i = 0; i < NP; i++) {
-      const u = t - panels[i].on; const bb = u < 0 ? 0.03 : u < 0.05 ? 1 : u < 0.1 ? 0.12 : u < 0.14 ? 0.95 : u < 0.2 ? 0.3 : 0.9;
+      const u = t - panels[i].on, n = Math.abs(Math.sin(Math.floor(t * 14) * 12.9898 + i * 78.233) * 43758.5453) % 1;
+      const bb = u < 0 ? 0.015 : u < 0.05 ? 0.5 : u < 0.1 ? 0.04 : u < 0.14 ? 0.35 : (n > 0.965 ? 0.55 : 0.045);
       tmpC.setRGB(0.92 * bb, 0.95 * bb, 1.0 * bb); panelM.setColorAt(i, tmpC);
     }
     panelM.instanceColor.needsUpdate = true;
     // runway: pulses running toward the open end
     for (let i = 0; i < NRW; i++) {
       const z = 0.4 + i * 0.7, head = AL - ((t - 1.5) * 11) % (AL + 8), p = t < 1.5 ? 0 : Math.exp(-Math.pow(z - head, 2) / 1.6);
-      tmpC.setRGB(0.05 + (0.32 - 0.05) * (0.25 * lit + 0.75 * p), 0.06 + (1 - 0.06) * (0.25 * lit + 0.75 * p), 0.07 + (0.62 - 0.07) * (0.25 * lit + 0.75 * p)); runM.setColorAt(i, tmpC);
+      const q = 0.12 * lit + 0.6 * p; tmpC.setRGB(0.03 + 0.29 * q, 0.035 + 0.965 * q, 0.04 + 0.58 * q); runM.setColorAt(i, tmpC);
     }
     runM.instanceColor.needsUpdate = true;
   }
@@ -295,11 +297,12 @@ export function mountWorld(canvas, opt = {}) {
     for (const k of ['heroP', 'howF', 'afterP']) SM[k] += (S[k] - SM[k]) * Math.min(1, dt * (reduced ? 60 : 5.5));
     const { heroP, howF, afterP } = SM;
     // light: the room is dark until its ceiling flickers on
-    const lit = reduced ? 1 : out3(seg(t, T_TURN[0], T_TURN[0] + 0.9));
-    hemi.intensity = LIGHT.hemi * lit; key.intensity = LIGHT.key * lit; rim.intensity = LIGHT.rim * lit;
-    shell.envMapIntensity = 0.9 * lit; scene.environmentIntensity = lit;
+    const lit = reduced ? 1 : out3(seg(t, T_TURN[0], T_TURN[0] + 0.9));          // the room comes alive
+    const day = reduced ? 1 : out3(seg(t, 5.3, 7.2));                            // the island's light, as you step out
+    hemi.intensity = LIGHT.hemi * (0.03 * lit * (1 - day) + day); key.intensity = LIGHT.key * day; rim.intensity = LIGHT.rim * day;
+    shell.envMapIntensity = 0.9 * Math.max(day, 0.05); scene.environmentIntensity = Math.max(day, 0.04 * lit);
     const ex = reduced ? 1 : io(seg(t, T_EXIT[0], T_EXIT[1]));
-    const fg = reduced ? 1 : sm(seg(t, 4.2, 6.4)); scene.fog.near = lerp(2.5, 18, fg); scene.fog.far = lerp(21, 70, fg);
+    const fg = reduced ? 1 : sm(seg(t, 4.6, 6.6)); scene.fog.near = lerp(1.2, 18, fg); scene.fog.far = lerp(12, 70, fg);
     mouse.x += (mouse.tx - mouse.x) * Math.min(1, dt * 3); mouse.y += (mouse.ty - mouse.y) * Math.min(1, dt * 3);
     // ---- the camera
     let fov = 22, ox, oy;
@@ -339,7 +342,8 @@ export function mountWorld(canvas, opt = {}) {
     room.visible = inIntro && ex < 0.97; doorB.g.visible = room.visible;
     if (room.visible) {
       rackUpdate(t, mouse.x, mouse.y);
-      lamp.position.copy(cam.position).addScaledVector(cam.getWorldDirection(look.clone()), 0.8); lamp.intensity = 7 * lit * (1 - ex);
+      lamp.position.copy(cam.position).addScaledVector(cam.getWorldDirection(look.clone()), 0.9); lamp.intensity = 1.7 * lit * (1 - day); lamp.distance = 5;
+      eyeLight.intensity = 0.22 * (1 - seg(t, 1.6, 2.6));
       const db = seg(t, 0.45, 0.6), db2 = seg(t, 0.7, 0.85);
       doorB.eyes.scale.y = 1 - 0.9 * (Math.sin(db * Math.PI) + Math.sin(db2 * Math.PI));
       doorB.eyes.position.x = mouse.x * 0.03; doorB.eyes.position.y = mouse.y * 0.02;
