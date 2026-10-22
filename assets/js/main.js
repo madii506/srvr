@@ -1,9 +1,10 @@
-// srvr boot: two eyes in the dark while the 3D world loads. Then the block falls asleep in a dark room and waits: "enter"
-// wakes it and the intro plays. No sound anywhere. After that one scroll drives everything:
+// srvr boot: two eyes in the dark while the 3D world loads. Then the block is asleep in a dark room for a second, wakes
+// on its own and the intro plays, with the calm music (or, where the browser holds sound back until you touch the page,
+// from your first click, tap or key). After that one scroll drives everything:
 // smooth (inertia) scrolling, the camera's path through the world, the pinned "how it works" steps, the hero's parallax
 // and the veil that dims the world behind the tools.
 const body = document.body, root = document.documentElement, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const canvas = document.getElementById('world'), enterBtn = document.getElementById('enter');
+const canvas = document.getElementById('world');
 const keep = (st => ({ get: k => { try { return st().getItem(k); } catch { return null; } }, set: (k, v) => { try { st().setItem(k, v); } catch {} } }));
 const local = keep(() => localStorage), sess = keep(() => sessionStorage);
 // the room and the intro play on every visit and every reload; only a shared coin link, a section link, ?skip or
@@ -17,34 +18,46 @@ const done = () => { text(); body.classList.remove('intro', 'boot', 'gate'); bod
 function fallback() {
   if (fell) return; fell = true; started = true;
   canvas.hidden = true; document.querySelector('.stage .still').hidden = false;
-  body.classList.remove('boot', 'gate'); body.classList.add('intro'); setTimeout(text, 80); setTimeout(done, 900);
+  body.classList.remove('boot', 'gate'); body.classList.add('intro'); setTimeout(text, 80); setTimeout(done, 900); playMusic();
 }
 function webgl() { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } }
 
-// ---------------------------------------------------------------- the gate
+// ---------------------------------------------------------------- calm music
+// browsers only allow sound once someone has clicked, tapped or pressed a key on the page, so it tries right away and,
+// if that's refused, starts on the first touch instead. It rests while the tab is in the background.
+const music = document.getElementById('music');
+let musicOn = false, fadeRaf = 0;
+function fadeIn(ms = 2600) { cancelAnimationFrame(fadeRaf); const t0 = performance.now(); const f = now => { const k = Math.min(1, (now - t0) / ms); music.volume = 0.5 * k; if (k < 1) fadeRaf = requestAnimationFrame(f); }; fadeRaf = requestAnimationFrame(f); }
+function playMusic() {
+  if (musicOn || !music) return;
+  try { music.volume = 0; const p = music.play(); musicOn = true; fadeIn();
+    if (p && p.catch) p.catch(() => { musicOn = false; }); } catch { musicOn = false; }
+}
+for (const ev of ['pointerdown', 'keydown', 'touchend']) addEventListener(ev, () => { if (!musicOn && started) playMusic(); }, { passive: true });
+document.addEventListener('visibilitychange', () => { if (!music || !musicOn) return; if (document.hidden) music.pause(); else music.play().catch(() => {}); });
+
+// ---------------------------------------------------------------- the room, then the intro on its own
 function enter() {
-  if (started || !ready) return; started = true; sess.set('srvr:in', '1');
-  if (world && world.peek) world.peek(true);   // its eyes open the moment you press
+  if (started || !ready) return; started = true;
+  if (world && world.peek) world.peek(true);   // its eyes open
+  playMusic();
   body.classList.add('woke');
   setTimeout(() => { body.classList.remove('boot', 'gate'); body.classList.add('intro'); if (world) world.go(); }, 420);
   setTimeout(done, 17000);
 }
-enterBtn.addEventListener('click', enter);
-// no words on the way in: a click anywhere in the room wakes it too
+// a click or a key in the room starts it straight away
 document.getElementById('boot').addEventListener('click', () => { if (body.classList.contains('gate')) enter(); });
-// hover "enter" and the sleeping block opens its eyes to look at you
-for (const [ev, on] of [['pointerenter', true], ['pointerleave', false], ['focus', true], ['blur', false]]) enterBtn.addEventListener(ev, () => { if (!started && world && world.peek) world.peek(on); });
 addEventListener('keydown', e => { if (!started && ready && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); enter(); } });
 
 if (webgl()) {
-  import('./world.js?v=8').then(m => {
+  import('./world.js?v=9').then(m => {
     world = m.mountWorld(canvas, {
       reduced, wait: !quick,
-      onReady: () => { ready = true; if (!quick) { body.classList.add('gate'); enterBtn.hidden = false; try { enterBtn.focus({ preventScroll: true }); } catch {} } },
+      onReady: () => { ready = true; if (!quick) { body.classList.add('gate'); setTimeout(enter, 1000); } },   // one second asleep in the room, then it wakes
       onText: text, onDone: done,
     });
     window.__world = world; startTick();
-    if (quick) { started = true; body.classList.remove('boot'); body.classList.add('intro'); world.skip(); if (reduced) done(); }
+    if (quick) { started = true; body.classList.remove('boot'); body.classList.add('intro'); world.skip(); if (reduced) done(); playMusic(); }
   }).catch(e => { console.warn('world', e); fallback(); });
 } else fallback();
 // backstop: if the world never loads, open the page anyway
@@ -203,4 +216,4 @@ document.querySelectorAll('.band .eb, .launch, .board, .join, .pingf, .chips, .o
   el.classList.add('reveal'); if (el.matches('.faq details')) el.style.transitionDelay = ((i % 10) * 0.05) + 's'; rv.observe(el);
 });
 
-import('./app.js?v=8').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));
+import('./app.js?v=9').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));
