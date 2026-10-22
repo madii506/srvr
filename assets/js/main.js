@@ -27,7 +27,7 @@ function webgl() { try { const c = document.createElement('canvas'); return !!(c
 // if that's refused, starts on the first touch instead. It rests while the tab is in the background.
 const music = document.getElementById('music');
 let musicOn = false, fadeRaf = 0;
-function fadeIn(ms = 2600) { cancelAnimationFrame(fadeRaf); const t0 = performance.now(); const f = now => { const k = Math.min(1, (now - t0) / ms); music.volume = 0.5 * k; if (k < 1) fadeRaf = requestAnimationFrame(f); }; fadeRaf = requestAnimationFrame(f); }
+function fadeIn(ms = 2600) { cancelAnimationFrame(fadeRaf); const t0 = performance.now(); const f = now => { const k = Math.max(0, Math.min(1, (now - t0) / ms)); try { music.volume = 0.5 * k; } catch {} if (k < 1) fadeRaf = requestAnimationFrame(f); }; fadeRaf = requestAnimationFrame(f); }   // a frame's timestamp can be a hair before t0, so clamp
 function playMusic() {
   if (musicOn || !music) return;
   try { music.volume = 0; const p = music.play(); musicOn = true; fadeIn();
@@ -50,7 +50,7 @@ document.getElementById('boot').addEventListener('click', () => { if (body.class
 addEventListener('keydown', e => { if (!started && ready && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); enter(); } });
 
 if (webgl()) {
-  import('./world.js?v=9').then(m => {
+  import('./world.js?v=10').then(m => {
     world = m.mountWorld(canvas, {
       reduced, wait: !quick,
       onReady: () => { ready = true; if (!quick) { body.classList.add('gate'); setTimeout(enter, 1000); } },   // one second asleep in the room, then it wakes
@@ -216,4 +216,4 @@ document.querySelectorAll('.band .eb, .launch, .board, .join, .pingf, .chips, .o
   el.classList.add('reveal'); if (el.matches('.faq details')) el.style.transitionDelay = ((i % 10) * 0.05) + 's'; rv.observe(el);
 });
 
-import('./app.js?v=9').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));
+import('./app.js?v=10').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));

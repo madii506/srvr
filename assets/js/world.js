@@ -326,9 +326,9 @@ export function mountWorld(canvas, opt = {}) {
   const skip = () => { if (!waiting && T < INTRO) T = INTRO - 0.001; };
   function go() {
     if (!waiting) return; waiting = false; last = performance.now();
-    setTimeout(() => { for (const ev of ['keydown', 'wheel', 'touchstart', 'pointerdown']) addEventListener(ev, skip, { once: true, passive: true }); }, 900);
+    setTimeout(() => { for (const ev of ['keydown', 'wheel', 'touchmove']) addEventListener(ev, skip, { once: true, passive: true }); }, 900);
   }
-  if (!opt.wait && !reduced) setTimeout(() => { for (const ev of ['keydown', 'wheel', 'touchstart', 'pointerdown']) addEventListener(ev, skip, { once: true, passive: true }); }, 300);
+  if (!opt.wait && !reduced) setTimeout(() => { for (const ev of ['keydown', 'wheel', 'touchmove']) addEventListener(ev, skip, { once: true, passive: true }); }, 300);
 
   const look = new THREE.Vector3();
   let fovNow = 22;
