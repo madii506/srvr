@@ -18,12 +18,12 @@
 <link rel="preload" href="/assets/fonts/jbm.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="modulepreload" href="/assets/vendor/three.module.min.js">
-<link rel="stylesheet" href="/assets/css/site.css?v=4">
+<link rel="stylesheet" href="/assets/css/site.css?v=5">
 <script src="/assets/vendor/lenis.min.js" defer></script>
 <script src="/assets/js/config.js?v=1"></script>
 </head>
 <body class="boot">
-<div id="boot"><div class="eyes" aria-hidden="true"><span></span><span></span></div><button class="enter" id="enter" type="button" hidden><i class="eq" aria-hidden="true"><b></b><b></b><b></b><b></b></i>enter</button></div>
+<div id="boot"><div class="eyes" aria-hidden="true"><span></span><span></span></div><button class="enter" id="enter" type="button" aria-label="enter" hidden><i class="eq" aria-hidden="true"><b></b><b></b><b></b><b></b></i></button></div>
 <button class="snd" id="snd" type="button" aria-label="sound on" aria-pressed="false"><b></b><b></b><b></b><b></b></button>
 <audio id="music" src="/assets/audio/calm.mp3" preload="auto" loop></audio>
 <div class="prog" id="prog" aria-hidden="true"></div>
@@ -91,7 +91,7 @@
         </form>
         <div class="trail" id="lfTrail" aria-live="polite">
           <div class="pv" id="pv">
-            <div class="pv-top"><img id="pvImg" alt=""><div><b id="pvName">your coin</b><small id="pvSym">$TICKER</small></div><span class="pv-tag">preview</span></div>
+            <div class="pv-top"><img id="pvImg" alt=""><div><b id="pvName">your coin</b><small id="pvSym">$TICKER</small></div></div>
             <div class="pv-row"><i class="gl wait" id="pvGl"></i><span id="pvSrv">your server</span><em id="pvSt">waiting for an address</em></div>
             <div class="pv-row pv-rent"><span>fees</span><b>100%</b><span>→</span><span id="pvRent">your wallet</span><em>locked at launch</em></div>
           </div>
@@ -182,6 +182,13 @@
       </div>
     </div>
   </section>
+
+  <section class="end" id="end" aria-label="launch">
+    <div class="end-in">
+      <p class="end-l"><span>launch a coin,</span> <span>a world spins up.</span></p>
+      <a class="btn pri" href="#launch">launch a server</a>
+    </div>
+  </section>
 </main>
 
 <dialog class="sheet" id="sheet" aria-label="coin" data-lenis-prevent>
@@ -189,6 +196,6 @@
   <div id="sheetIn"></div>
 </dialog>
 <div class="sr" aria-live="polite" id="sr"></div>
-<script type="module" src="/assets/js/main.js?v=5"></script>
+<script type="module" src="/assets/js/main.js?v=6"></script>
 </body>
 </html>
