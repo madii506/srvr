@@ -1,5 +1,5 @@
-// srvr boot: two eyes in the dark while the 3D world loads. Then they fall asleep and wait: "enter" wakes them, starts
-// the calm music (browsers only allow sound after a click) and the intro. After that one scroll drives everything:
+// srvr boot: two eyes in the dark while the 3D world loads. Then the block falls asleep in a dark room and waits: "enter"
+// wakes it and the intro plays. No sound anywhere. After that one scroll drives everything:
 // smooth (inertia) scrolling, the camera's path through the world, the pinned "how it works" steps, the hero's parallax
 // and the veil that dims the world behind the tools.
 const body = document.body, root = document.documentElement, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -21,26 +21,9 @@ function fallback() {
 }
 function webgl() { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } }
 
-// ---------------------------------------------------------------- calm music, on by default once you enter; the corner switch mutes it
-const music = document.getElementById('music'), snd = document.getElementById('snd');
-let soundOn = local.get('srvr:sound') !== 'off', fadeRaf = 0;
-function fadeTo(v, ms, then) {
-  cancelAnimationFrame(fadeRaf); const v0 = music.volume, t0 = performance.now();
-  const f = now => { const k = Math.min(1, (now - t0) / ms); music.volume = Math.max(0, Math.min(1, v0 + (v - v0) * k)); if (k < 1) fadeRaf = requestAnimationFrame(f); else if (then) then(); };
-  fadeRaf = requestAnimationFrame(f);
-}
-const showSnd = on => { snd.classList.toggle('on', on); snd.setAttribute('aria-pressed', String(on)); snd.setAttribute('aria-label', on ? 'sound off' : 'sound on'); };
-function playMusic(ms = 2600) { try { music.volume = 0; const p = music.play(); showSnd(true); if (p && p.catch) p.catch(() => showSnd(false)); fadeTo(0.5, ms); } catch { showSnd(false); } }
-snd.addEventListener('click', () => {
-  const on = music.paused || music.volume < 0.05;
-  local.set('srvr:sound', on ? 'on' : 'off'); soundOn = on;
-  if (on) playMusic(1200); else { showSnd(false); fadeTo(0, 600, () => music.pause()); }
-});
-
 // ---------------------------------------------------------------- the gate
 function enter() {
   if (started || !ready) return; started = true; sess.set('srvr:in', '1');
-  // no sound on the way in: the intro plays silent, music is only ever switched on from the corner
   if (world && world.peek) world.peek(true);   // its eyes open the moment you press
   body.classList.add('woke');
   setTimeout(() => { body.classList.remove('boot', 'gate'); body.classList.add('intro'); if (world) world.go(); }, 420);
@@ -54,7 +37,7 @@ for (const [ev, on] of [['pointerenter', true], ['pointerleave', false], ['focus
 addEventListener('keydown', e => { if (!started && ready && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); enter(); } });
 
 if (webgl()) {
-  import('./world.js?v=6').then(m => {
+  import('./world.js?v=8').then(m => {
     world = m.mountWorld(canvas, {
       reduced, wait: !quick,
       onReady: () => { ready = true; if (!quick) { body.classList.add('gate'); enterBtn.hidden = false; try { enterBtn.focus({ preventScroll: true }); } catch {} } },
@@ -220,4 +203,4 @@ document.querySelectorAll('.band .eb, .launch, .board, .join, .pingf, .chips, .o
   el.classList.add('reveal'); if (el.matches('.faq details')) el.style.transitionDelay = ((i % 10) * 0.05) + 's'; rv.observe(el);
 });
 
-import('./app.js?v=6').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));
+import('./app.js?v=8').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));
