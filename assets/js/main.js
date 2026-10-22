@@ -24,7 +24,7 @@ if (webgl()) {
 } else fallback();
 // backstops: the page never stays dark
 setTimeout(() => { if (body.classList.contains('boot')) fallback(); }, 7000);
-setTimeout(done, 9000);
+setTimeout(done, 15000);
 
 // ---------------------------------------------------------------- smooth scroll
 let lenis = null;
@@ -51,6 +51,41 @@ const nav = document.querySelector('.nav'), links = [...nav.querySelectorAll('a'
 const heroIn = document.querySelector('.hero-in'), veil = document.getElementById('veil');
 const how = document.getElementById('how'), steps = [...document.querySelectorAll('#hSteps li')], bar = document.getElementById('hBar'), count = document.getElementById('hCount');
 const mq = document.getElementById('mq');
+const prog = document.getElementById('prog');
+// the cursor: a small block that follows, looks where it's heading, and grows on things you can press (mouse only)
+let cur = null, curEyes = null, cx = -100, cy = -100, ctx = -100, cty = -100, cdown = false, cblink = 0;
+if (matchMedia('(pointer: fine)').matches && !reduced) {
+  cur = document.getElementById('cur'); curEyes = cur.querySelectorAll('i'); root.classList.add('cur-on');
+  addEventListener('pointermove', e => {
+    ctx = e.clientX; cty = e.clientY; if (cx < -50) { cx = ctx; cy = cty; }
+    const t = e.target, txt = t.closest && t.closest('input,textarea');
+    cur.classList.toggle('text', !!txt);
+    cur.classList.toggle('hot', !txt && !!((t.closest && t.closest('a,button,summary,select,.brow,.pic,[role=button],[data-open]')) || root.classList.contains('over-block')));
+    cur.classList.remove('away');
+  }, { passive: true });
+  addEventListener('pointerdown', () => { cdown = true; }); addEventListener('pointerup', () => { cdown = false; });
+  document.documentElement.addEventListener('mouseleave', () => cur.classList.add('away'));
+}
+// buttons lean toward the cursor
+if (matchMedia('(pointer: fine)').matches && !reduced) {
+  document.addEventListener('pointermove', e => {
+    const b = e.target.closest && e.target.closest('.cta .btn, .btn.pri, .chips button');
+    document.querySelectorAll('.btn.mag').forEach(x => { if (x !== b) { x.classList.remove('mag'); x.style.transform = ''; } });
+    if (!b || b.disabled) return;
+    const r = b.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    b.classList.add('mag'); b.style.transform = `translate(${(dx * 0.18).toFixed(1)}px,${(dy * 0.28).toFixed(1)}px)`;
+  }, { passive: true });
+}
+// labels decode as they arrive
+const GLY = 'abcdefghijklmnopqrstuvwxyz0123456789/._';
+function scramble(el) {
+  const node = [...el.childNodes].find(n => n.nodeType === 3 && n.textContent.trim()); if (!node || el.dataset.sc) return; el.dataset.sc = 1;
+  const full = node.textContent, n = full.length, t0 = performance.now(), D = 700;
+  const step = now => { const p = Math.min(1, (now - t0) / D), k = Math.floor(p * n);
+    node.textContent = full.slice(0, k) + full.slice(k).replace(/[^\s—]/g, () => GLY[(Math.random() * GLY.length) | 0]);
+    if (p < 1) requestAnimationFrame(step); else node.textContent = full; };
+  requestAnimationFrame(step);
+}
 const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 let mqX = 0, lastY = scrollY, vel = 0, lastT = performance.now(), stepOn = 0, ticking = false;
 function startTick() { if (ticking) return; ticking = true; requestAnimationFrame(tick); }
@@ -73,6 +108,11 @@ function tick(now = performance.now()) {
   // the marquee: always drifting, faster (and the other way) when you scroll
   if (mq) { const w = mq.firstElementChild.offsetWidth || 1; mqX -= (40 + Math.abs(vel) * 0.35) * dt * (vel < -5 ? -1 : 1); mqX = ((mqX % w) - w) % w; mq.style.transform = `translate3d(${mqX.toFixed(1)}px,0,0)`; }
   nav.classList.toggle('solid', y > 40);
+  prog.style.transform = `scaleX(${cl(y / Math.max(1, document.documentElement.scrollHeight - H)).toFixed(4)})`;
+  if (cur) { cx += (ctx - cx) * 0.24; cy += (cty - cy) * 0.24; const vx = cl((ctx - cx) / 40, -1, 1), vy = cl((cty - cy) / 40, -1, 1);
+    cur.style.transform = `translate3d(${cx.toFixed(1)}px,${cy.toFixed(1)}px,0) scale(${cdown ? 0.82 : 1})`;
+    if (curEyes) { curEyes[0].style.transform = curEyes[1].style.transform = `translate(${(vx * 2.2).toFixed(2)}px,${(vy * 2).toFixed(2)}px)`; }
+    if (now > cblink) { cur.classList.add('blink'); setTimeout(() => cur.classList.remove('blink'), 110); cblink = now + 2400 + Math.random() * 3500; } }
   requestAnimationFrame(tick);
 }
 startTick();
@@ -90,7 +130,7 @@ for (const h of document.querySelectorAll('h2')) {
   h.innerHTML = words.map((w, i) => `<span class="wd"><span style="transition-delay:${(i * 0.045).toFixed(3)}s">${w.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span></span>`).join(' ');
   h.setAttribute('aria-label', words.join(' '));
 }
-const rv = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('vis'); rv.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
+const rv = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('vis'); if (e.target.matches('.eb') && !reduced) scramble(e.target); rv.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
 document.querySelectorAll('h2').forEach(h => { h.classList.add('reveal'); rv.observe(h); });
 document.querySelectorAll('.band .eb, .launch, .board, .join, .pingf, .chips, .own, .faq details, .how .eb, .hsteps, .hbar, .how .legend').forEach((el, i) => {
   el.classList.add('reveal'); if (el.matches('.faq details')) el.style.transitionDelay = ((i % 10) * 0.05) + 's'; rv.observe(el);
