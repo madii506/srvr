@@ -316,7 +316,7 @@ export function mountWorld(canvas, opt = {}) {
     const cd = cam.position.distanceTo(CENTER); scene.fog.near = Math.max(18, cd * 0.85); scene.fog.far = Math.max(70, cd * 2.3);
     // ---- the archipelago
     archipelago(t, s, mouse.x, mouse.y, dt);
-    lineM.opacity = 0.12 + 0.1 * seg(t, 2.5, 4.5) + 0.04 * Math.sin(s * 1.3);
+    lineM.opacity = lerp(0.12 + 0.1 * seg(t, 2.5, 4.5), 0.06, seg(t, 8.0, 9.6)) + 0.03 * Math.sin(s * 1.3);   // bright while you fly over them, faint behind the page
     // ---- srvr's island builds itself as you come back to it
     hero.awakeM.emissiveIntensity = 2.6;
     for (const b of sats) {
