@@ -25,8 +25,8 @@ function drop(t) { // falls, lands, settles: 0 → 1 (1 = resting)
 const impact = t => (t < 0.55 || t >= 1 ? 0 : (u => Math.sin(u * Math.PI) * (1 - u))((t - 0.55) / 0.45)); // squash after landing
 
 // the intro's clock (seconds)
-export const INTRO = 9.9;
-const T_OUT = [1.0, 5.0], T_DRIFT = [5.0, 6.9], T_IN = [6.9, 9.6], T_TEXT = 9.3;
+export const INTRO = 5.0;
+const T_FLY = [0.45, 4.75], T_TEXT = 4.3;
 
 export function mountWorld(canvas, opt = {}) {
   const reduced = !!opt.reduced;
@@ -118,7 +118,7 @@ export function mountWorld(canvas, opt = {}) {
     block(0.4, 'on', -1.25, 0.95, -1.7, 0.15),
     block(0.3, 'sleep', -2.35, 0.25, -0.35, 0.25),
   ];
-  sats.forEach((b, i) => { b.delay = 7.25 + i * 0.13; });
+  sats.forEach((b, i) => { b.delay = 3.15 + i * 0.1; });
   const fresh = block(0.62, 'on', -0.95, 0.15, 1.35, 0.3); fresh.g.visible = false;
   const cab = new THREE.MeshStandardMaterial({ color: 0x24272c, roughness: 0.75 }), cables = [], pulses = [];
   const pulseGeo = new THREE.SphereGeometry(0.035, 12, 8), pulseM = new THREE.MeshStandardMaterial({ color: G, emissive: G, emissiveIntensity: 3, roughness: 0.3 });
@@ -155,7 +155,7 @@ export function mountWorld(canvas, opt = {}) {
     const q = rnd(), s = 1.3 + rnd() * 1.1, yaw = Math.atan2(CAMZONE.x - p.x, CAMZONE.z - p.z) + (rnd() - 0.5) * 0.9;
     const smalls = []; const ns = 2 + Math.floor(rnd() * 3);
     for (let k = 0; k < ns; k++) { const a2 = rnd() * Math.PI * 2, d2 = s * (1.0 + rnd() * 0.9); smalls.push({ o: new THREE.Vector3(Math.cos(a2) * d2, (rnd() - 0.6) * s, Math.sin(a2) * d2), s: s * (0.24 + rnd() * 0.26), ry: rnd() * 6 }); }
-    ISL.push({ p, s, yaw, rad, state: q < 0.72 ? 'on' : q < 0.9 ? 'sleep' : 'off', tw: 1.9 + (rad - 15) / 46 * 2.7 + rnd() * 0.3, ph: rnd() * 6.28, smalls });
+    ISL.push({ p, s, yaw, rad, state: q < 0.72 ? 'on' : q < 0.9 ? 'sleep' : 'off', tw: 0.85 + (rad - 15) / 46 * 1.5 + rnd() * 0.2, ph: rnd() * 6.28, smalls });
   }
   const NI = ISL.length, NS = ISL.reduce((n, o) => n + o.smalls.length, 0);
   const lowGeo = new RoundedBoxGeometry(1, 1, 1, 2, 0.09);
@@ -283,16 +283,17 @@ export function mountWorld(canvas, opt = {}) {
     for (const k of ['heroP', 'howF', 'afterP']) SM[k] += (S[k] - SM[k]) * Math.min(1, dt * (reduced ? 60 : 5.5));
     const { heroP, howF, afterP } = SM;
     // light: eyes first, then the world comes up as you pull back
-    const lit = reduced ? 1 : out3(seg(t, 0.9, 2.6));
+    const lit = reduced ? 1 : out3(seg(t, 0.35, 1.6));
     hemi.intensity = LIGHT.hemi * lit; key.intensity = LIGHT.key * lit; rim.intensity = LIGHT.rim * lit;
     shell.envMapIntensity = 0.9 * lit; scene.environmentIntensity = lit;
     mouse.x += (mouse.tx - mouse.x) * Math.min(1, dt * 3); mouse.y += (mouse.ty - mouse.y) * Math.min(1, dt * 3);
     // ---- the camera
     if (inIntro) {
-      if (t < T_OUT[0]) mix(K.start, K.start, 0);
-      else if (t < T_OUT[1]) mix(K.start, K.far, io(seg(t, T_OUT[0], T_OUT[1])));
-      else if (t < T_DRIFT[1]) mix(K.far, K.far2, sine(seg(t, T_DRIFT[0], T_DRIFT[1])));
-      else mix(K.far2, K.hero, io(seg(t, T_IN[0], T_IN[1])));
+      // one smooth flight: from the eyes out over every island and down onto srvr's, never stopping
+      const w = seg(t, T_FLY[0], T_FLY[1]), u = io(w), h = Math.pow(Math.sin(Math.PI * sine(w)), 1.15);
+      mix(K.start, K.hero, u);
+      C.d *= Math.exp(h * Math.log(K.far.d / Math.exp(lerp(Math.log(K.start.d), Math.log(K.hero.d), 0.5))));
+      C.el += h * 0.22; C.az += h * 0.35; C.fov += h * 16; C.t.y -= h * 1.4; C.ox *= u; C.oy *= u;
     } else if (afterP > 0.001) mix(K.sell, K.away, sm(afterP));
     else if (howF > 0.001) {
       const f = howF;
@@ -316,7 +317,7 @@ export function mountWorld(canvas, opt = {}) {
     const cd = cam.position.distanceTo(CENTER); scene.fog.near = Math.max(18, cd * 0.85); scene.fog.far = Math.max(70, cd * 2.3);
     // ---- the archipelago
     archipelago(t, s, mouse.x, mouse.y, dt);
-    lineM.opacity = lerp(0.12 + 0.1 * seg(t, 2.5, 4.5), 0.06, seg(t, 8.0, 9.6)) + 0.03 * Math.sin(s * 1.3);   // bright while you fly over them, faint behind the page
+    lineM.opacity = lerp(0.12 + 0.12 * seg(t, 1.0, 2.2), 0.06, seg(t, 3.6, 4.8)) + 0.03 * Math.sin(s * 1.3);   // bright while you fly over them, faint behind the page
     // ---- srvr's island builds itself as you come back to it
     hero.awakeM.emissiveIntensity = 2.6;
     for (const b of sats) {
@@ -334,7 +335,7 @@ export function mountWorld(canvas, opt = {}) {
     fresh.g.position.y = fresh.base.y + (1 - drop(u1)) * 6; fresh.sq = impact(u1);
     { const k = seg(u1, 0.55, 1); fresh.ring.visible = k > 0 && k < 1; fresh.ringM.opacity = 0.42 * (1 - k); fresh.ring.scale.setScalar(fresh.base.s * (0.7 + out3(k) * 1.5)); }
     const e2 = Math.min(sm(seg(howF, 1.05, 1.5)), 1 - 0.6 * sm(seg(howF, 1.95, 2.4)));
-    const cg = reduced ? 1 : out3(seg(t, 7.9, 8.9));
+    const cg = reduced ? 1 : out3(seg(t, 3.6, 4.5));
     for (const c of cables) { const n = c.geometry.index.count; c.geometry.setDrawRange(0, Math.floor(n * cg / 6) * 6); c.visible = cg > 0; }
     pulseM.emissiveIntensity = 2 + e2 * 3;
     for (const p of pulses) {
@@ -343,7 +344,7 @@ export function mountWorld(canvas, opt = {}) {
       const vis = cg >= 1 ? (0.4 + e2 * 0.9) * sm(seg(v, 0, 0.12)) * sm(seg(1 - v, 0, 0.1)) : 0;
       p.visible = vis > 0.01; p.scale.setScalar(Math.max(0.001, vis));
     }
-    pieces.forEach((p, i) => { const u = reduced ? 1 : back(seg(t, 8.4 + i * 0.09, 8.8 + i * 0.09)); p.scale.setScalar(Math.max(0.0001, u)); });
+    pieces.forEach((p, i) => { const u = reduced ? 1 : back(seg(t, 3.85 + i * 0.06, 4.2 + i * 0.06)); p.scale.setScalar(Math.max(0.0001, u)); });
     guests.forEach((p, i) => {
       const inn = back(seg(howF, 2.05 + i * 0.12, 2.4 + i * 0.12)), gone = i % 2 === 0 ? sm(seg(howF, 3.05 + i * 0.1, 3.3 + i * 0.1)) : 0;
       const v = afterP > 0 ? (i % 2 === 0 ? 0 : 1) : inn * (1 - gone);
@@ -363,7 +364,7 @@ export function mountWorld(canvas, opt = {}) {
       else if (s > b.blinkAt) { b.blink = 1; b.blinkAt = s + 2.2 + Math.random() * 4.5; }
       b.blink = Math.max(0, b.blink - dt * 7);
       let sy = 1 - Math.sin(b.blink * Math.PI) * 0.9;
-      if (isHero && inIntro) sy = 1 - 0.9 * (Math.sin(seg(t, 0.5, 0.64) * Math.PI) + Math.sin(seg(t, 0.74, 0.88) * Math.PI) + Math.sin(seg(t, 9.15, 9.3) * Math.PI));
+      if (isHero && inIntro) sy = 1 - 0.9 * (Math.sin(seg(t, 0.12, 0.26) * Math.PI) + Math.sin(seg(t, 4.5, 4.64) * Math.PI));
       b.eyes.scale.y = sy;
       b.eyes.position.x = mouse.x * 0.035 * Math.max(idle, isHero && t < 1 ? 1 : 0); b.eyes.position.y = mouse.y * 0.025 * Math.max(idle, isHero && t < 1 ? 1 : 0);
       b.wake = Math.max(0, b.wake - dt);
@@ -372,7 +373,7 @@ export function mountWorld(canvas, opt = {}) {
       const big = hovered === b ? 1.18 : 1; b.eyes.scale.x += (big - b.eyes.scale.x) * Math.min(1, dt * 10);
     }
     folk.forEach((f, i) => { f.rotation.y += Math.sin(s * 0.7 + i * 2) * 0.004 * idle; f.position.y = Math.abs(Math.sin(s * 2.2 + i * 1.7)) * 0.012 * idle; });
-    voxels(dt, reduced ? 1 : out3(seg(t, 7.6, 9.2)));
+    voxels(dt, reduced ? 1 : out3(seg(t, 3.4, 4.7)));
     if (!textCalled && t >= T_TEXT) { textCalled = true; opt.onText && opt.onText(); }
     if (!doneCalled && t >= INTRO) { doneCalled = true; opt.onDone && opt.onDone(); }
   }

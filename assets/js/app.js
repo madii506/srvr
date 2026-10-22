@@ -129,12 +129,25 @@ function launch() {
   const f = $('#lf'), go = $('#lfGo'), err = $('#lfErr'), wal = $('#lfWal'), trail = $('#lfSteps'), done = $('#lfDone');
   const name = $('#fName'), sym = $('#fSym'), srv = $('#fSrv'), srvSt = $('#fSrvSt'), rent = $('#fRent'), desc = $('#fDesc'), x = $('#fX'), buy = $('#fBuy'), quote = $('#fQuote');
   const pic = $('#pic'), picIn = $('#picIn'), picImg = $('#picImg');
+  // the live preview: your coin's card, as you type it
+  const pv = $('#pv'), pvImg = $('#pvImg'), pvName = $('#pvName'), pvSym = $('#pvSym'), pvSrv = $('#pvSrv'), pvSt = $('#pvSt'), pvGl = $('#pvGl'), pvRent = $('#pvRent');
+  let pvT;
+  const preview = () => {
+    const sy = sym.value.trim().replace(/^\$/, '').toUpperCase();
+    pvName.textContent = name.value.trim() || 'your coin'; pvSym.textContent = '$' + (sy || 'TICKER');
+    pvSrv.textContent = srv.value.trim().toLowerCase() || 'your server';
+    const rw = rent.value.trim() || W.me; pvRent.textContent = rw ? short(rw) : 'your wallet';
+    clearTimeout(pvT); pvT = setTimeout(() => { pvImg.src = (picCanvas || defaultPic(sy)).toDataURL('image/png'); }, 120);
+    pv.classList.remove('pop'); void pv.offsetWidth; pv.classList.add('pop');
+  };
   trail.innerHTML = STEPS.map(s => `<li><i></i><span>${esc(s)}<small></small></span></li>`).join('');
   const idle = document.createElement('p'); idle.className = 'idle-note'; idle.innerHTML = 'your wallet signs everything. <b>srvr never holds a key</b> and adds no fee. fees lock to the rent wallet in the same launch, for good.'; trail.parentNode.insertBefore(idle, trail);
   const label = () => { go.textContent = W.me ? `launch${sym.value.trim() ? ' $' + sym.value.trim().toUpperCase() : ''}` : 'connect a wallet'; rent.placeholder = W.me ? 'your wallet · ' + short(W.me) : 'your wallet'; };
   W.on.add(label); label(); sym.addEventListener('input', () => { sym.value = sym.value.replace(/[^A-Za-z0-9$]/g, '').toUpperCase().slice(0, 11); label(); });
+  for (const el of [name, sym, srv, rent]) el.addEventListener('input', preview);
+  W.on.add(preview); preview();
   // picture
-  const setPic = c => { picCanvas = c; picImg.src = c.toDataURL('image/png'); picImg.hidden = false; pic.querySelector('.pic-e').hidden = true; };
+  const setPic = c => { picCanvas = c; picImg.src = c.toDataURL('image/png'); picImg.hidden = false; pic.querySelector('.pic-e').hidden = true; preview(); };
   const take = async file => { try { setPic(await fromFile(file)); } catch (e) { err.textContent = e.message; } };
   pic.addEventListener('click', () => picIn.click()); pic.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); picIn.click(); } });
   picIn.addEventListener('change', () => picIn.files[0] && take(picIn.files[0]));
@@ -142,9 +155,11 @@ function launch() {
   pic.addEventListener('drop', e => { e.preventDefault(); pic.classList.remove('drag'); const fl = e.dataTransfer.files[0]; if (fl) take(fl); });
   // the server address gets a live ping as you leave the field
   let pingT;
-  const pingSrv = async () => { const v = srv.value.trim(); if (!v) { srvSt.textContent = ''; srvSt.className = 'srvst'; return; } srvSt.className = 'srvst'; srvSt.textContent = 'pinging…';
+  const pingSrv = async () => { const v = srv.value.trim(); if (!v) { srvSt.textContent = ''; srvSt.className = 'srvst'; pvGl.className = 'gl wait'; pvSt.textContent = 'waiting for an address'; return; } srvSt.className = 'srvst'; srvSt.textContent = 'pinging…'; pvGl.className = 'gl wait'; pvSt.textContent = 'pinging…';
     const r = await api('/api/ping?q=' + encodeURIComponent(v), { timeout: 15000 });
-    if (!r.ok) { srvSt.className = 'srvst bad'; srvSt.textContent = r.error; return; }
+    if (srv.value.trim() !== v) return;
+    if (!r.ok) { srvSt.className = 'srvst bad'; srvSt.textContent = r.error; pvGl.className = 'gl off'; pvSt.textContent = 'not a server address'; return; }
+    pvGl.className = 'gl ' + r.mood; pvSt.textContent = r.online ? `${r.players}/${r.max} on now` : 'offline right now';
     srvSt.className = 'srvst ' + (r.online ? 'ok' : 'warn'); srvSt.textContent = r.online ? `online · ${r.players}/${r.max} on · ${r.version || 'java edition'}` : 'offline right now. you can still launch; its block will sleep until it’s up.'; };
   srv.addEventListener('blur', pingSrv); srv.addEventListener('input', () => { clearTimeout(pingT); pingT = setTimeout(pingSrv, 900); });
   // a first buy, priced on a fresh curve by pump.fun's own math
@@ -215,13 +230,22 @@ async function board(force) {
   if (!r.ok) { if (!COINS.length) el.innerHTML = `<div class="empty">${glyph('off', 'big')}<p>${esc(r.error)}</p><button class="btn sm" type="button" id="bdRetry">try again</button></div>`; live.innerHTML = '· offline'; return; }
   COINS = r.coins || []; SOLUSD = r.solUsd;
   live.innerHTML = `<b>●</b> live`;
-  if (!COINS.length) el.innerHTML = `<div class="empty">${glyph('sleep', 'big')}<p>no servers yet. the first block could be yours.</p><a class="btn pri sm" href="#launch">launch a server</a></div>`;
-  else el.innerHTML = COINS.map(c => { const s = c.st, mc = c.curve && c.curve.mcapSol;
-    return `<div class="brow" role="button" tabindex="0" data-open="${esc(c.mint)}">${glyph(c.mood, '')}<div class="nm"><img src="${esc(c.image)}" alt="" loading="lazy"><div><b>${esc(c.name)}</b><small>$${esc(c.symbol)}</small></div></div>
+  renderBoard();
+  fillPickers();
+}
+let bSort = 'new', bQ = '';
+function renderBoard() {
+  const el = $('#board'); $('#bCtl').hidden = !COINS.length;
+  if (!COINS.length) { el.innerHTML = `<div class="empty">${glyph('sleep', 'big')}<p>no servers yet. the first block could be yours.</p><a class="btn pri sm" href="#launch">launch a server</a></div>`; return; }
+  const q = bQ.trim().toLowerCase(), mcap = c => (c.curve && c.curve.mcapSol) || 0, pl = c => (c.st && c.st.online ? c.st.players : -1);
+  const list = COINS.filter(c => !q || (c.name + ' ' + c.symbol + ' ' + c.server).toLowerCase().includes(q));
+  if (bSort === 'players') list.sort((a, b) => pl(b) - pl(a)); else if (bSort === 'mcap') list.sort((a, b) => mcap(b) - mcap(a)); else if (bSort === 'keys') list.sort((a, b) => b.keys - a.keys);
+  if (!list.length) { el.innerHTML = `<p class="nomatch">nothing on the board matches “${esc(bQ)}”.</p>`; return; }
+  el.innerHTML = list.map((c, i) => { const s = c.st, mc = c.curve && c.curve.mcapSol;
+    return `<div class="brow" role="button" tabindex="0" data-open="${esc(c.mint)}" style="animation-delay:${Math.min(i, 12) * 45}ms">${glyph(c.mood, '')}<div class="nm"><img src="${esc(c.image)}" alt="" loading="lazy"><div><b>${esc(c.name)}</b><small>$${esc(c.symbol)}</small></div></div>
       <div class="sv">${esc(c.server)}</div><div class="pl">${s && s.online ? `${s.players}/${s.max}` : '—'}<small>${moodTxt[c.mood] || 'checking'}</small></div>
       <div class="mc">${SOLUSD && mc ? fmtUsd(mc * SOLUSD) : fmtSol(mc)}<small>${c.keys} ${c.keys === 1 ? 'key' : 'keys'}</small></div>
       <div class="go"><button class="btn sm" type="button" data-join="${esc(c.mint)}">join</button><a class="btn sm" href="https://pump.fun/coin/${esc(c.mint)}" target="_blank" rel="noopener">pump.fun ↗</a></div></div>`; }).join('');
-  fillPickers();
 }
 function fillPickers() {
   for (const [sel, wrap] of [['#jCoin', '.jmint'], ['#oCoin', '.omint']]) {
@@ -240,6 +264,17 @@ function join() {
   const label = () => { go.textContent = W.me ? 'sign and join' : 'connect a wallet'; }; W.on.add(label); label();
   $('#jCoin').addEventListener('change', () => { $('.jmint').hidden = $('#jCoin').value !== 'paste'; });
   nm.addEventListener('input', () => { nm.value = nm.value.replace(/[^A-Za-z0-9_]/g, '').slice(0, 16); nmSt.className = ''; nmSt.textContent = nm.value && !/^[A-Za-z0-9_]{3,16}$/.test(nm.value) ? '3–16 letters, numbers or underscores' : ''; });
+  // look the name up as you type, and show that player's real head
+  const head = $('#jHead'), headImg = $('#jHeadImg'); let nT, nSeq = 0;
+  nm.addEventListener('input', () => {
+    clearTimeout(nT); head.classList.remove('on'); const v = nm.value; if (!/^[A-Za-z0-9_]{3,16}$/.test(v)) return;
+    nT = setTimeout(async () => {
+      const my = ++nSeq; nmSt.className = ''; nmSt.textContent = 'looking up ' + v + '…';
+      const r = await api('/api/join?name=' + encodeURIComponent(v)); if (my !== nSeq || nm.value !== v) return;
+      if (r.ok && r.uuid) { headImg.onload = () => head.classList.add('on'); headImg.onerror = () => head.classList.remove('on'); headImg.src = `https://mc-heads.net/avatar/${r.uuid}/64`; nmSt.className = 'ok'; nmSt.textContent = `found ${r.name}`; }
+      else { nmSt.className = 'bad'; nmSt.textContent = r.error || `no java edition player called ${v}`; }
+    }, 450);
+  });
   f.addEventListener('submit', async e => {
     e.preventDefault(); err.textContent = '';
     if (!W.me) return chooser(wal, label).catch(er => { err.textContent = er.message; });
@@ -265,18 +300,27 @@ function join() {
 // ---------------------------------------------------------------- 05 ping
 function renderMotd(segs) { return (segs || []).map(s => `<span style="color:${esc(s.c)};${s.b ? 'font-weight:700' : ''}">${esc(s.t)}</span>`).join(''); }
 function ping() {
-  const f = $('#pf'), q = $('#pQ'), card = $('#pCard'), btn = f.querySelector('button');
-  const run = async v => {
-    v = (v || q.value).trim(); if (!v) { q.focus(); return; } q.value = v;
-    busyBtn(btn, true, 'pinging'); const r = await api('/api/ping?q=' + encodeURIComponent(v), { timeout: 15000 }); busyBtn(btn, false);
+  const f = $('#pf'), q = $('#pQ'), card = $('#pCard'), btn = f.querySelector('button'), chips = $('#pChips'), DEF = [...chips.querySelectorAll('[data-q]')].map(b => b.dataset.q);
+  const HK = 'srvr:pings', hist = () => { try { return JSON.parse(localStorage.getItem(HK) || '[]'); } catch { return []; } };
+  const drawChips = () => { const h = hist(); chips.innerHTML = h.map(x => `<button type="button" class="recent" data-q="${esc(x)}">${esc(x)}</button>`).join('') + DEF.filter(x => !h.includes(x)).map(x => `<button type="button" data-q="${esc(x)}">${esc(x)}</button>`).join(''); };
+  drawChips();
+  let liveHost = '', liveAt = 0;
+  setInterval(() => { const a = card.querySelector('[data-ago]'); if (a && liveAt) { const sec = Math.round((Date.now() - liveAt) / 1000); a.textContent = sec < 3 ? 'just now' : sec + 's ago'; } }, 1000);
+  setInterval(() => { const r = $('#ping').getBoundingClientRect(); if (liveHost && !document.hidden && r.top < innerHeight && r.bottom > 0) run(liveHost, true); }, 15000);
+  async function run(v, quiet) {
+    v = (v || q.value).trim(); if (!v) { q.focus(); return; } if (!quiet) q.value = v;
+    if (!quiet) busyBtn(btn, true, 'pinging'); const r = await api('/api/ping?q=' + encodeURIComponent(v), { timeout: 15000 }); if (!quiet) busyBtn(btn, false);
+    if (quiet && v !== liveHost) return;
     card.hidden = false;
+    if (r.ok) { liveHost = r.host; liveAt = Date.now(); if (!quiet) { try { localStorage.setItem(HK, JSON.stringify([r.host, ...hist().filter(x => x !== r.host)].slice(0, 4))); } catch {} drawChips(); } }
+    else if (!quiet) liveHost = '';
     if (!r.ok) { card.innerHTML = `${glyph('off', 'huge')}<div><h3>${esc(v)}</h3><p class="err" style="margin-top:10px">${esc(r.error)}</p></div>`; return; }
     card.innerHTML = `${glyph(r.mood, 'huge')}<div><div class="hd">${r.icon ? `<img src="${esc(r.icon)}" alt="">` : ''}<h3>${esc(r.host)}</h3><span class="st ${r.mood}">${moodTxt[r.mood]}</span></div>
       ${r.online && r.motd && r.motd.length ? `<div class="motd">${renderMotd(r.motd)}</div>` : ''}
-      <div class="kv"><div><small>players</small>${r.online ? `${r.players.toLocaleString()} / ${r.max.toLocaleString()}` : '—'}</div><div><small>version</small>${esc(r.version || '—')}</div><div><small>read</small>just now</div></div>
+      <div class="kv"><div><small>players</small>${r.online ? `${r.players.toLocaleString()} / ${r.max.toLocaleString()}` : '—'}</div><div><small>version</small>${esc(r.version || '—')}</div><div><small><span class="livedot">live</span></small><span data-ago>just now</span></div></div>
       ${r.sample && r.sample.length ? `<div class="heads">${r.sample.map(p => p.head ? `<img src="${esc(p.head)}" alt="${esc(p.name)}" title="${esc(p.name)}" loading="lazy" onerror="this.remove()">` : '').join('')}</div>` : ''}
       ${r.coins && r.coins.length ? `<p class="idle-note" style="margin-top:14px">on srvr: ${r.coins.map(c => `<button class="lk" type="button" data-open="${esc(c.mint)}">$${esc(c.symbol)}</button>`).join(' ')}</p>` : ''}</div>`;
-  };
+  }
   f.addEventListener('submit', e => { e.preventDefault(); run(); });
   $('#pChips').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) run(b.dataset.q); });
 }
@@ -287,11 +331,27 @@ function owners() {
   jar.href = ok ? '/api/plugin?mint=' + mint : '/api/plugin'; jar.textContent = ok ? `download srvr.jar for $${(COINS.find(c => c.mint === mint) || {}).symbol || short(mint)}` : 'download srvr.jar';
   feed.href = ok ? '/api/whitelist?mint=' + mint + '&view=1' : '/api/whitelist';
   $('#oCron').textContent = `# every 2 minutes: fetch who holds, then reload the whitelist\n*/2 * * * * curl -fsS "${location.origin}/api/whitelist?mint=${ok ? mint : '<your coin>'}" -o /path/to/server/whitelist.json && mcrcon -p <rcon password> "whitelist reload"`;
+  clearTimeout(cfgT); cfgT = setTimeout(async () => {
+    const t = await fetch('/api/plugin?f=config&view=1' + (ok ? '&mint=' + mint : '')).then(r => (r.ok ? r.text() : '')).catch(() => '');
+    $('#oCfg').innerHTML = t ? esc(t).replace(/^(mint: .*)$/m, '<span class="hl">$1</span>') : 'the config didn’t load.';
+  }, 200);
+  $('#oTestR').textContent = '';
 }
+let cfgT;
 function ownersInit() {
   $('#oCoin').addEventListener('change', () => { $('.omint').hidden = $('#oCoin').value !== 'paste'; owners(); });
   $('#oMint').addEventListener('input', owners);
   $('#oCopy').addEventListener('click', () => copy($('#oCron').textContent, 'cron line copied'));
+  $('#oTest').addEventListener('click', async () => {
+    const mint = pickedMint('#oCoin', '#oMint'), out = $('#oTestR'), b = $('#oTest');
+    if (!isAddr(mint)) { out.textContent = 'pick a coin first, or paste its address.'; return; }
+    busyBtn(b, true, 'reading'); out.textContent = '';
+    try {
+      const r = await fetch('/api/whitelist?mint=' + mint, { cache: 'no-store' }), j = await r.json();
+      out.textContent = r.ok && Array.isArray(j) ? `the feed answered: ${j.length} ${j.length === 1 ? 'holder' : 'holders'} on the list${j.length ? ' · ' + j.slice(0, 6).map(x => x.name).join(', ') : ''}. this is what the plugin reads.` : (j.error || 'the feed didn’t answer.');
+    } catch { out.textContent = 'the feed didn’t answer.'; }
+    finally { busyBtn(b, false); }
+  });
   owners();
 }
 
@@ -346,6 +406,18 @@ function ca() {
 export function start(ctx = {}) {
   CTX = ctx;
   launch(); join(); ping(); ownersInit(); ca();
+  $('#bQ').addEventListener('input', e => { bQ = e.target.value; renderBoard(); });
+  $('#bSort').addEventListener('click', e => { const b = e.target.closest('[data-sort]'); if (!b) return; bSort = b.dataset.sort; $('#bSort').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); renderBoard(); });
+  // faq: search the questions
+  const fq = $('#fQ'), fN = $('#fN'), items = [...document.querySelectorAll('#faqList details')];
+  items.forEach(d => { const s = d.querySelector('summary'); d.dataset.q = d.textContent.toLowerCase(); s.dataset.t = s.textContent; });
+  fq.addEventListener('input', () => {
+    const q = fq.value.trim().toLowerCase(), rx = q ? new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig') : null; let n = 0;
+    items.forEach(d => { const hit = !q || d.dataset.q.includes(q), s = d.querySelector('summary'); d.classList.toggle('hide', !hit); if (hit) n++;
+      s.innerHTML = rx && hit ? esc(s.dataset.t).replace(rx, '<mark>$1</mark>') : esc(s.dataset.t);
+      if (q && hit && !d.open) { d.open = true; d.dataset.auto = 1; } else if (!q && d.dataset.auto) { d.open = false; delete d.dataset.auto; } });
+    fN.textContent = q ? (n ? `${n} of ${items.length}` : 'nothing matches') : '';
+  });
   board(true); setInterval(() => { if (!document.hidden) board(true); }, 30000);
   // one click handler for every data-* action on the page
   document.addEventListener('click', e => {

@@ -147,6 +147,34 @@ function tick(now = performance.now()) {
 }
 startTick();
 
+// how it works: click a step to fly to it
+steps.forEach((li, i) => {
+  li.tabIndex = 0; li.setAttribute('role', 'button');
+  const goStep = () => { const top = how.getBoundingClientRect().top + scrollY, y = top + (how.offsetHeight - innerHeight) * ((i + 0.5) / 4); if (lenis) lenis.scrollTo(y, { duration: 1.3 }); else scrollTo({ top: y, behavior: 'smooth' }); };
+  li.addEventListener('click', goStep); li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goStep(); } });
+});
+// every block glyph on the page looks at your cursor; cards tilt toward it
+if (matchMedia('(pointer: fine)').matches && !reduced) {
+  let gx = 0, gy = 0, gq = false;
+  addEventListener('pointermove', e => {
+    gx = e.clientX; gy = e.clientY; if (gq) return; gq = true;
+    requestAnimationFrame(() => {
+      gq = false;
+      for (const g of document.querySelectorAll('.gl')) {
+        const r = g.getBoundingClientRect(); if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
+        const dx = gx - (r.left + r.width / 2), dy = gy - (r.top + r.height / 2), d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 140) * r.width * 0.075;
+        g.style.setProperty('--gx', (dx / d * k).toFixed(2) + 'px'); g.style.setProperty('--gy', (dy / d * k * 0.8).toFixed(2) + 'px');
+      }
+    });
+  }, { passive: true });
+  document.addEventListener('pointermove', e => {
+    const c = e.target.closest && e.target.closest('.pv, .pcard, .ownbox');
+    document.querySelectorAll('.tilting').forEach(x => { if (x !== c) { x.classList.remove('tilting'); x.style.removeProperty('--rx'); x.style.removeProperty('--ry'); } });
+    if (!c) return; const r = c.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+    c.classList.add('tilting'); c.style.setProperty('--rx', (-py * 5).toFixed(2) + 'deg'); c.style.setProperty('--ry', (px * 7).toFixed(2) + 'deg');
+  }, { passive: true });
+}
+
 // the current section, underlined in the nav
 const secs = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
 const io = new IntersectionObserver(es => {
