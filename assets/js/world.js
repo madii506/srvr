@@ -1,7 +1,8 @@
 // srvr's world. Server blocks whose status lights are their eyes: green awake, amber asleep, dark off.
-// The intro is a walk: two eyes in the dark (a block at the end of a server room), the lights flicker on row by row,
-// you turn and walk the aisle while hundreds of blocks wake and follow you with their eyes, the room opens onto the
-// island, and the island builds itself as the camera glides into place. Then the page's scroll drives the camera:
+// The intro: two eyes in the dark. The camera pulls back from that one block, and keeps pulling back until the dark
+// is full of floating islands, one server for every coin, their eyes waking in a wave like a city at night, linked by
+// faint lines with data running along them. A slow drift over them all, then a swoop down to srvr's own island, which
+// builds itself as you land. After that the page's scroll drives the camera:
 //   hero → "how it works" (a new block drops in · fees pulse up the cables · players hop onto the roof · sellers vanish)
 //   → pulled back and veiled behind the tools.
 import * as THREE from '../vendor/three.module.min.js';
@@ -24,8 +25,8 @@ function drop(t) { // falls, lands, settles: 0 → 1 (1 = resting)
 const impact = t => (t < 0.55 || t >= 1 ? 0 : (u => Math.sin(u * Math.PI) * (1 - u))((t - 0.55) / 0.45)); // squash after landing
 
 // the intro's clock (seconds)
-export const INTRO = 9.3;
-const T_TURN = [0.95, 2.15], T_WALK = [1.8, 6.8], T_EXIT = [6.2, 9.0], T_TEXT = 8.4;
+export const INTRO = 9.9;
+const T_OUT = [1.0, 5.0], T_DRIFT = [5.0, 6.9], T_IN = [6.9, 9.6], T_TEXT = 9.3;
 
 export function mountWorld(canvas, opt = {}) {
   const reduced = !!opt.reduced;
@@ -47,8 +48,7 @@ export function mountWorld(canvas, opt = {}) {
   key.shadow.mapSize.set(coarse ? 1024 : 2048, coarse ? 1024 : 2048); key.shadow.radius = 8; key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
   Object.assign(key.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 0.5, far: 30 });
   const rim = new THREE.DirectionalLight(0xcfe0ff, 1.1); rim.position.set(5, 4, -7);
-  const lamp = new THREE.PointLight(0xe6eeff, 0, 9, 1.6);            // the walker's light in the server room
-  scene.add(hemi, key, key.target, rim, lamp);
+  scene.add(hemi, key, key.target, rim);
   const LIGHT = { hemi: 0.5, key: 2.2, rim: 1.1 };
 
   const shell = new THREE.MeshStandardMaterial({ color: 0xeef0f3, roughness: 0.42, metalness: 0, envMapIntensity: 0.9 });
@@ -104,7 +104,7 @@ export function mountWorld(canvas, opt = {}) {
     return folk;
   }
 
-  // ---------------------------------------------------------------- the island
+  // ---------------------------------------------------------------- srvr's island
   const CENTER = new THREE.Vector3(0.4, 0.12, -0.3);
   const AZ0 = Math.atan2(7.25, 9.4), EL0 = Math.asin(5.55 / Math.hypot(7.25, 5.55, 9.4));
   const hero = block(1.35, 'on', 0, -0.05, 0, -0.08);
@@ -118,7 +118,7 @@ export function mountWorld(canvas, opt = {}) {
     block(0.4, 'on', -1.25, 0.95, -1.7, 0.15),
     block(0.3, 'sleep', -2.35, 0.25, -0.35, 0.25),
   ];
-  sats.forEach((b, i) => { b.delay = 5.5 + i * 0.14; });
+  sats.forEach((b, i) => { b.delay = 7.25 + i * 0.13; });
   const fresh = block(0.62, 'on', -0.95, 0.15, 1.35, 0.3); fresh.g.visible = false;
   const cab = new THREE.MeshStandardMaterial({ color: 0x24272c, roughness: 0.75 }), cables = [], pulses = [];
   const pulseGeo = new THREE.SphereGeometry(0.035, 12, 8), pulseM = new THREE.MeshStandardMaterial({ color: G, emissive: G, emissiveIntensity: 3, roughness: 0.3 });
@@ -141,125 +141,107 @@ export function mountWorld(canvas, opt = {}) {
     }
   }
 
-  // ---------------------------------------------------------------- the server room (only seen in the intro)
-  // Local axes: x across the aisle, y up, z along it (z = 0 is the open end facing the island, z = AL the far wall).
-  const room = new THREE.Group(); room.rotation.y = AZ0; scene.add(room);
-  const AL = 22, AW = 3.3, EYE_H = 1.6;
-  { const floor = new THREE.Mesh(new THREE.PlaneGeometry(AW + 2, AL + 3), new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.38, metalness: 0.3 }));
-    floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, AL / 2 + 0.6); room.add(floor);
-    const frameM = new THREE.MeshStandardMaterial({ color: 0x17191d, roughness: 0.6 });
-    for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.4, 0.28), frameM); p.position.set(sx * (AW / 2 + 0.75), 1.7, -0.1); room.add(p); }
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(AW + 1.8, 0.28, 0.28), frameM); lintel.position.set(0, 3.4, -0.1); room.add(lintel);
-    const way = glow(G); way.emissiveIntensity = 2; way.fog = false;      // the way out: a lit threshold, lintel and posts
-    for (const y of [0.012, 3.25]) { const l = new THREE.Mesh(new THREE.BoxGeometry(AW + 1.2, 0.02, 0.06), way); l.position.set(0, y, -0.1); room.add(l); }
-    for (const sx of [-1, 1]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.02, 3.24, 0.06), way); l.position.set(sx * (AW / 2 + 0.6), 1.63, -0.1); room.add(l); } }
-  // the racks: four shelves of blocks down both sides, every face turned into the aisle
-  const RB = [];
-  for (const side of [-1, 1]) for (let z = 0.7; z < AL - 0.2; z += 0.64) for (let lv = 0; lv < 4; lv++) {
-    const q = Math.random();
-    RB.push({ x: side * (AW / 2 + 0.3), y: 0.36 + lv * 0.62, z, s: 0.52 + Math.random() * 0.05, side, state: q < 0.7 ? 'on' : q < 0.88 ? 'sleep' : 'off', tw: 99, jit: Math.random() * 0.2 });
+  // ---------------------------------------------------------------- the archipelago: every coin's server, floating
+  let seed = 9; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const heroDir = new THREE.Vector3(Math.sin(AZ0), 0, Math.cos(AZ0)), CAMZONE = CENTER.clone().addScaledVector(heroDir, 70).setY(30);
+  const ISL = [];
+  for (let tries = 0; ISL.length < 36 && tries < 4000; tries++) {
+    const ang = rnd() * Math.PI * 2, rad = 15 + Math.pow(rnd(), 0.75) * 46, y = (rnd() - 0.5) * 16;
+    const p = new THREE.Vector3(CENTER.x + Math.sin(ang) * rad, CENTER.y + y, CENTER.z + Math.cos(ang) * rad);
+    const dh = new THREE.Vector3(p.x - CENTER.x, 0, p.z - CENTER.z).normalize();
+    if (dh.dot(heroDir) > Math.cos(0.55)) continue;                       // keep the hero shot's line of sight clear
+    if (dh.dot(new THREE.Vector3(-Math.sin(-0.08), 0, -Math.cos(-0.08))) > Math.cos(0.42)) continue;   // and the first close-up's background
+    if (ISL.some(o => o.p.distanceTo(p) < 8)) continue;
+    const q = rnd(), s = 1.3 + rnd() * 1.1, yaw = Math.atan2(CAMZONE.x - p.x, CAMZONE.z - p.z) + (rnd() - 0.5) * 0.9;
+    const smalls = []; const ns = 2 + Math.floor(rnd() * 3);
+    for (let k = 0; k < ns; k++) { const a2 = rnd() * Math.PI * 2, d2 = s * (1.0 + rnd() * 0.9); smalls.push({ o: new THREE.Vector3(Math.cos(a2) * d2, (rnd() - 0.6) * s, Math.sin(a2) * d2), s: s * (0.24 + rnd() * 0.26), ry: rnd() * 6 }); }
+    ISL.push({ p, s, yaw, rad, state: q < 0.72 ? 'on' : q < 0.9 ? 'sleep' : 'off', tw: 1.9 + (rad - 15) / 46 * 2.7 + rnd() * 0.3, ph: rnd() * 6.28, smalls });
   }
-  const NR = RB.length;
-  const rackM = new THREE.InstancedMesh(new RoundedBoxGeometry(1, 1, 1, 2, 0.09), shell, NR);
-  const eyeM = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), NR * 2);
-  const mouthM = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), dark, NR);
-  room.add(rackM, eyeM, mouthM);
-  const CG = new THREE.Color(0.32, 1.0, 0.62), CA = new THREE.Color(1.0, 0.68, 0.24), CD = new THREE.Color(0.07, 0.075, 0.085), tmpC = new THREE.Color();
-  RB.forEach((b, i) => {
-    dm.position.set(b.x, b.y, b.z); dm.rotation.set(0, b.side < 0 ? Math.PI / 2 : -Math.PI / 2, 0); dm.scale.setScalar(b.s); dm.updateMatrix(); rackM.setMatrixAt(i, dm.matrix);
-    dm.position.set(b.x - b.side * 0.507 * b.s, b.y - 0.2 * b.s, b.z); dm.scale.set(0.015 * b.s, 0.03 * b.s, 0.42 * b.s); dm.rotation.set(0, 0, 0); dm.updateMatrix(); mouthM.setMatrixAt(i, dm.matrix);
-    eyeM.setColorAt(i * 2, CD); eyeM.setColorAt(i * 2 + 1, CD);
+  const NI = ISL.length, NS = ISL.reduce((n, o) => n + o.smalls.length, 0);
+  const lowGeo = new RoundedBoxGeometry(1, 1, 1, 2, 0.09);
+  const islM = new THREE.InstancedMesh(lowGeo, shell, NI + NS), islEye = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), NI * 2), islMouth = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), dark, NI);
+  scene.add(islM, islEye, islMouth);
+  const CG = new THREE.Color(0.32, 1.0, 0.62), CA = new THREE.Color(1.0, 0.68, 0.24), CD = new THREE.Color(0.06, 0.065, 0.075), tmpC = new THREE.Color(), tq = new THREE.Quaternion(), YUP = new THREE.Vector3(0, 1, 0), tv = new THREE.Vector3();
+  { let k = NI; ISL.forEach(o => o.smalls.forEach(sm2 => { dm.position.copy(o.p).add(sm2.o); dm.rotation.set(0, sm2.ry, 0); dm.scale.setScalar(sm2.s); dm.updateMatrix(); islM.setMatrixAt(k++, dm.matrix); })); }
+  // the network: each island linked to its two nearest, the near ones to srvr's island too; drawn as they wake
+  const links = [];
+  ISL.forEach((o, i) => {
+    ISL.map((b, j) => [j, o.p.distanceTo(b.p)]).filter(x => x[0] !== i).sort((a, b) => a[1] - b[1]).slice(0, 2).forEach(([j]) => { if (!links.some(l => (l.a === i && l.b === j) || (l.a === j && l.b === i))) links.push({ a: i, b: j, t: Math.max(o.tw, ISL[j].tw) + 0.25 }); });
+    if (o.rad < 30) links.push({ a: i, b: -1, t: o.tw + 0.15 });
   });
-  rackM.instanceMatrix.needsUpdate = true; mouthM.instanceMatrix.needsUpdate = true;
-  // ceiling panels that flicker on from the far wall toward the exit, and runway lights down the middle of the floor
-  const panels = [], NP = Math.floor(AL / 2);
-  const panelM = new THREE.InstancedMesh(new THREE.BoxGeometry(1.25, 0.035, 0.46), new THREE.MeshBasicMaterial({ color: 0xffffff }), NP);
-  for (let i = 0; i < NP; i++) { const z = AL - 1 - i * 2; panels.push({ z, on: T_TURN[0] + (i / NP) * 1.15 }); dm.position.set(0, 3.05, z); dm.rotation.set(0, 0, 0); dm.scale.setScalar(1); dm.updateMatrix(); panelM.setMatrixAt(i, dm.matrix); panelM.setColorAt(i, CD); }
-  const NRW = Math.floor(AL / 0.7), runM = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.012, 0.32), new THREE.MeshBasicMaterial({ color: 0xffffff }), NRW);
-  for (let i = 0; i < NRW; i++) { dm.position.set(0, 0.006, 0.4 + i * 0.7); dm.updateMatrix(); runM.setMatrixAt(i, dm.matrix); runM.setColorAt(i, CD); }
-  room.add(panelM, runM);
-  // the block on the far wall: the first eyes you see
-  const doorB = block(1.0, 'on', 0, 0, 0, 0); room.add(doorB.g); doorB.g.position.set(0, EYE_H + 0.1, AL + 0.5); doorB.g.rotation.y = Math.PI; doorB.land = 1; doorB.base.y = EYE_H + 0.1; doorB.base.ry = Math.PI;
-  const eyeLight = new THREE.PointLight(G, 0, 1.6, 2); eyeLight.position.set(0, EYE_H + 0.2, AL - 0.55); room.add(eyeLight);
-
-  // the walk, in room coordinates: start facing the far wall, turn around, walk out of the open end
-  const Z0 = AL + 0.5 - 2.25;
-  function walkZ(t) { const turn = io(seg(t, T_TURN[0], T_TURN[1])); return lerp(Z0 - 0.45 * turn, -1.4, sine(seg(t, T_WALK[0], T_WALK[1]))); }
-  RB.forEach(b => { for (let t = T_TURN[0] + 0.2; t < T_EXIT[1]; t += 0.02) if (walkZ(t) - b.z < 5.4) { b.tw = t + b.jit; break; } });
-  const camL = new THREE.Vector3(), lookL = new THREE.Vector3(), roomLook = new THREE.Vector3();
-  function walkCam(t) {
-    const z = walkZ(t), w = seg(t, T_WALK[0], T_WALK[1]), pace = Math.sin(Math.PI * w);
-    const th = Math.PI * io(seg(t, T_TURN[0], T_TURN[1]));
-    camL.set(Math.sin(t * 1.3) * 0.06 * pace, EYE_H + Math.sin(t * 2 * Math.PI * 1.75) * 0.022 * pace, z);
-    if (t < T_TURN[0]) lookL.set(0, EYE_H + 0.2, AL + 0.5);                    // the first eyes
-    else lookL.set(camL.x + Math.sin(th) * 4, EYE_H - 0.12 * seg(t, 1.2, 2.2) - 4 * Math.tan(0.4 * sm(seg(t, 5.0, 6.6))), camL.z + Math.cos(th) * 4);
-    if (t < T_TURN[0] + 0.3) { const u = seg(t, T_TURN[0], T_TURN[0] + 0.3); lookL.lerpVectors(new THREE.Vector3(0, EYE_H + 0.2, AL + 0.5), lookL, sm(u)); }
-  }
-  const camW = new THREE.Vector3(), lookW = new THREE.Vector3();
-  function rackUpdate(t, mx, my) {
-    room.updateMatrixWorld(); const inv = room.matrixWorld.clone().invert();
-    const cL = cam.position.clone().applyMatrix4(inv);
-    const lit = seg(t, T_TURN[0], T_TURN[0] + 0.6);
-    for (let i = 0; i < NR; i++) {
-      const b = RB[i], k = seg(t, b.tw, b.tw + 0.3);
-      let c = CD, sy = 1;
-      if (k > 0 && b.state !== 'off') c = b.state === 'on' ? CG : CA;
-      const blinkK = k > 0 && k < 1 ? Math.sin(k * Math.PI) : 0; sy *= 1 - 0.85 * blinkK;
-      tmpC.copy(CD).lerp(c, k > 0 ? 0.25 + 0.75 * k : 0);
-      // eyes look at the walker (and drift toward your cursor)
-      const dx = cL.z - b.z, dy = cL.y - b.y, dd = Math.hypot(dx, dy, cL.x - b.x) || 1;
-      const ox = cl((dx / dd) * b.side + mx * 0.4, -1, 1) * 0.055, oy = cl(dy / dd + my * 0.3, -1, 1) * 0.04;
-      const sq = k > 0 && k < 1 ? Math.sin(k * Math.PI) * 0.12 : 0;
+  links.sort((x, y) => x.t - y.t);
+  const P = i => (i < 0 ? CENTER : ISL[i].p);
+  const lp = new Float32Array(links.length * 6); links.forEach((l, k) => { lp.set([P(l.a).x, P(l.a).y, P(l.a).z, P(l.b).x, P(l.b).y, P(l.b).z], k * 6); });
+  const lineGeo = new THREE.BufferGeometry(); lineGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
+  const lineM = new THREE.LineBasicMaterial({ color: G, transparent: true, opacity: 0.2, depthWrite: false });
+  const lines = new THREE.LineSegments(lineGeo, lineM); lineGeo.setDrawRange(0, 0); scene.add(lines);
+  // data running along the links
+  const ND = 60, dp = new Float32Array(ND * 3), DT = Array.from({ length: ND }, () => ({ l: Math.floor(rnd() * links.length), u: rnd(), v: 0.18 + rnd() * 0.3, dir: rnd() < 0.5 ? 1 : -1 }));
+  const dataGeo = new THREE.BufferGeometry(); dataGeo.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+  const data = new THREE.Points(dataGeo, new THREE.PointsMaterial({ color: G, size: 0.34, sizeAttenuation: true, transparent: true, opacity: 0.9, depthWrite: false })); scene.add(data);
+  // stars, far behind everything
+  { const n = coarse ? 700 : 1300, sp = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, rr = 150 + rnd() * 40, q2 = Math.sqrt(1 - u * u); sp.set([Math.cos(th) * q2 * rr, u * rr * 0.7, Math.sin(th) * q2 * rr], i * 3); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x8e959d, size: 1.25, sizeAttenuation: false, transparent: true, opacity: 0.55, fog: false, depthWrite: false }))); }
+  function archipelago(t, s, mx, my, dt) {
+    for (let i = 0; i < NI; i++) {
+      const o = ISL[i], k = seg(t, o.tw, o.tw + 0.35), bob = Math.sin(s * 0.6 + o.ph) * 0.18 * o.s;
+      const sq = k > 0 && k < 1 ? Math.sin(k * Math.PI) * 0.1 : 0;
+      dm.position.set(o.p.x, o.p.y + bob - sq * 0.3 * o.s, o.p.z); dm.rotation.set(0, o.yaw + Math.sin(s * 0.3 + o.ph) * 0.06, 0); dm.scale.set(o.s * (1 + sq * 0.5), o.s * (1 - sq), o.s * (1 + sq * 0.5)); dm.updateMatrix(); islM.setMatrixAt(i, dm.matrix);
+      tq.setFromAxisAngle(YUP, dm.rotation.y);
+      // its face: mouth, then eyes that wake in the wave and blink now and then
+      tv.set(0, -0.2 * o.s, 0.507 * o.s).applyQuaternion(tq); dm.position.set(o.p.x + tv.x, o.p.y + bob + tv.y, o.p.z + tv.z); dm.scale.set(0.42 * o.s, 0.03 * o.s, 0.015 * o.s); dm.updateMatrix(); islMouth.setMatrixAt(i, dm.matrix);
+      const blink = t > o.tw + 1 ? Math.max(0, Math.sin((s + o.ph * 3) * 0.7) - 0.985) * 60 : 0;
+      const on = k > 0 && o.state !== 'off', sleep = o.state === 'sleep' && on;
+      tmpC.copy(CD).lerp(o.state === 'sleep' ? CA : CG, on ? 0.2 + 0.8 * k : 0);
       for (let e = 0; e < 2; e++) {
-        const ex = (e ? 0.15 : -0.15) + ox;
-        dm.position.set(b.x - b.side * 0.506 * b.s, b.y + (b.state === 'sleep' && k > 0 ? 0.06 : 0.1 + oy) * b.s, b.z + b.side * ex * b.s);
-        dm.rotation.set(0, 0, 0); dm.scale.set(0.02 * b.s, (b.state === 'sleep' && k > 0 ? 0.035 / 0.2 : 1) * 0.2 * b.s * Math.max(0.08, sy), (b.state === 'sleep' && k > 0 ? 0.14 : 0.12) * b.s); dm.updateMatrix();
-        eyeM.setMatrixAt(i * 2 + e, dm.matrix); eyeM.setColorAt(i * 2 + e, tmpC);
+        tv.set(((e ? 0.15 : -0.15) + mx * 0.03) * o.s, ((sleep ? 0.06 : 0.1) + my * 0.02) * o.s, 0.508 * o.s).applyQuaternion(tq);
+        dm.position.set(o.p.x + tv.x, o.p.y + bob + tv.y, o.p.z + tv.z);
+        dm.scale.set((sleep ? 0.14 : 0.12) * o.s, (sleep ? 0.035 : 0.2) * o.s * Math.max(0.08, 1 - 0.9 * Math.min(1, blink + (k > 0 && k < 1 ? Math.sin(k * Math.PI) : 0))), 0.02 * o.s); dm.updateMatrix();
+        islEye.setMatrixAt(i * 2 + e, dm.matrix); islEye.setColorAt(i * 2 + e, tmpC);
       }
-      if (sq) { dm.position.set(b.x, b.y - sq * 0.3 * b.s, b.z); dm.rotation.set(0, b.side < 0 ? Math.PI / 2 : -Math.PI / 2, 0); dm.scale.set(b.s * (1 + sq * 0.5), b.s * (1 - sq), b.s * (1 + sq * 0.5)); dm.updateMatrix(); rackM.setMatrixAt(i, dm.matrix); rackM.instanceMatrix.needsUpdate = true; }
-      else if (k >= 1 && !b.settled) { b.settled = true; dm.position.set(b.x, b.y, b.z); dm.rotation.set(0, b.side < 0 ? Math.PI / 2 : -Math.PI / 2, 0); dm.scale.setScalar(b.s); dm.updateMatrix(); rackM.setMatrixAt(i, dm.matrix); rackM.instanceMatrix.needsUpdate = true; }
     }
-    eyeM.instanceMatrix.needsUpdate = true; eyeM.instanceColor.needsUpdate = true;
-    // ceiling: a fluorescent flicker, panel by panel
-    for (let i = 0; i < NP; i++) {
-      const u = t - panels[i].on, n = Math.abs(Math.sin(Math.floor(t * 14) * 12.9898 + i * 78.233) * 43758.5453) % 1;
-      const bb = u < 0 ? 0.015 : u < 0.05 ? 0.5 : u < 0.1 ? 0.04 : u < 0.14 ? 0.35 : (n > 0.965 ? 0.55 : 0.045);
-      tmpC.setRGB(0.92 * bb, 0.95 * bb, 1.0 * bb); panelM.setColorAt(i, tmpC);
+    islM.instanceMatrix.needsUpdate = true; islMouth.instanceMatrix.needsUpdate = true; islEye.instanceMatrix.needsUpdate = true; islEye.instanceColor.needsUpdate = true;
+    // links draw on as their islands wake; data runs along the drawn ones
+    let n = 0; while (n < links.length && links[n].t <= t) n++;
+    lineGeo.setDrawRange(0, n * 2);
+    for (let i = 0; i < ND; i++) {
+      const d = DT[i], l = links[d.l], vis = l.t + 0.3 <= t;
+      d.u = (d.u + d.v * dt * d.dir + 1) % 1;
+      if (!vis) { dp.set([0, -999, 0], i * 3); continue; }
+      const a = P(l.a), b = P(l.b); dp.set([lerp(a.x, b.x, d.u), lerp(a.y, b.y, d.u), lerp(a.z, b.z, d.u)], i * 3);
     }
-    panelM.instanceColor.needsUpdate = true;
-    // runway: pulses running toward the open end
-    for (let i = 0; i < NRW; i++) {
-      const z = 0.4 + i * 0.7, head = AL - ((t - 1.5) * 11) % (AL + 8), p = t < 1.5 ? 0 : Math.exp(-Math.pow(z - head, 2) / 1.6);
-      const q = 0.12 * lit + 0.6 * p; tmpC.setRGB(0.03 + 0.29 * q, 0.035 + 0.965 * q, 0.04 + 0.58 * q); runM.setColorAt(i, tmpC);
-    }
-    runM.instanceColor.needsUpdate = true;
+    dataGeo.attributes.position.needsUpdate = true;
   }
 
   // ---------------------------------------------------------------- camera: spherical keyframes around a target
-  const cam = new THREE.PerspectiveCamera(22, 1, 0.1, 200);
+  const cam = new THREE.PerspectiveCamera(22, 1, 0.1, 400);
   const K = {};
-  const kf = (az, el, d, t, ox, oy) => ({ az, el, d, t: t.clone(), ox, oy });
+  const kf = (az, el, d, t, ox, oy, fov = 22) => ({ az, el, d, t: t.clone(), ox, oy, fov });
+  const faceN = new THREE.Vector3(Math.sin(-0.08), 0, Math.cos(-0.08));
+  const EYES = new THREE.Vector3(0, -0.05 + 0.1 * 1.35, 0).addScaledVector(faceN, 0.505 * 1.35);
   let W = 1, H = 1, wide = true;
   function frame() {
     W = innerWidth; H = innerHeight;
     r.setSize(W, H, false); cam.aspect = W / H; wide = cam.aspect > 1.05;
     const f = wide ? (cam.aspect > 2 ? 0.5 : 0.58) : 1.14, d = cl(17.2 / (f * cam.aspect), 15, 52), sd = wide ? 1 : 1.75;
     const OX = wide ? -0.2 : 0, OY = wide ? 0 : 0.2;
+    K.start = kf(-0.08, 0.0, 5.2, EYES, 0, 0);
+    K.far = kf(0.3, 0.62, wide ? 74 : 104, CENTER.clone().setY(-1.5), 0, 0, 40);
+    K.far2 = kf(0.8, 0.5, wide ? 68 : 96, CENTER, 0, 0, 40);
     K.hero = kf(AZ0, EL0, d, CENTER, wide ? -0.205 : 0, wide ? -0.03 : 0.17);
     K.launch = kf(0.15, 0.32, 7.6 * sd, new THREE.Vector3(-0.35, 0.05, 0.5), OX, OY);
     K.rent = kf(0.95, 0.12, 9.8 * sd, new THREE.Vector3(0, -0.85, 0.1), OX, OY);
     K.join = kf(0.5, 0.88, 5.6 * sd, new THREE.Vector3(0, 0.78, 0), OX, OY);
     K.sell = kf(0.8, 0.42, 6.4 * sd, new THREE.Vector3(0.1, 0.55, 0), OX, OY);
     K.away = kf(0.95, 0.52, d * 1.12, CENTER, wide ? -0.3 : 0, wide ? 0.04 : 0.26);
-    // the room sits beyond where the hero shot stands, at the same height, so leaving it lands you in the shot
-    const hd = d * Math.cos(EL0), hy = CENTER.y + d * Math.sin(EL0);
-    room.position.set(CENTER.x + Math.sin(AZ0) * (hd + 2.5), hy - EYE_H, CENTER.z + Math.cos(AZ0) * (hd + 2.5));
     cam.updateProjectionMatrix();
   }
   frame();
-  const C = { az: 0, el: 0, d: 0, t: new THREE.Vector3(), ox: 0, oy: 0 };
-  function mix(a, b, u) { C.az = lerp(a.az, b.az, u); C.el = lerp(a.el, b.el, u); C.d = lerp(a.d, b.d, u); C.t.lerpVectors(a.t, b.t, u); C.ox = lerp(a.ox, b.ox, u); C.oy = lerp(a.oy, b.oy, u); }
-  const posOf = (k, out) => out.set(k.t.x + k.d * Math.cos(k.el) * Math.sin(k.az), k.t.y + k.d * Math.sin(k.el), k.t.z + k.d * Math.cos(k.el) * Math.cos(k.az));
+  const C = { az: 0, el: 0, d: 0, t: new THREE.Vector3(), ox: 0, oy: 0, fov: 22 };
+  // distance moves on a log scale, so pulling back from 5 to 90 feels like one steady glide
+  function mix(a, b, u) { C.az = lerp(a.az, b.az, u); C.el = lerp(a.el, b.el, u); C.d = Math.exp(lerp(Math.log(a.d), Math.log(b.d), u)); C.t.lerpVectors(a.t, b.t, u); C.ox = lerp(a.ox, b.ox, u); C.oy = lerp(a.oy, b.oy, u); C.fov = lerp(a.fov, b.fov, u); }
 
   // ---------------------------------------------------------------- scroll state, set by the page
   const S = { heroP: 0, howF: 0, afterP: 0 };
@@ -269,14 +251,14 @@ export function mountWorld(canvas, opt = {}) {
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), mouse = { x: 0, y: 0, tx: 0, ty: 0 };
   let hovered = null;
   const shells = blocks.map(b => b.m);
-  const busy = el => !!(el && el.closest && el.closest('a,button,input,select,textarea,label,summary,details,.form,.pcard,.board,.ownbox,.faq,dialog,.how-txt,.hero-in'));
+  const busy = el => !!(el && el.closest && el.closest('a,button,input,select,textarea,label,summary,details,.form,.pcard,.board,.ownbox,.faq,dialog,.how-txt,.hero-in,#boot'));
   function pick(e) {
     ndc.set((e.clientX / W) * 2 - 1, -(e.clientY / H) * 2 + 1);
     mouse.tx = ndc.x; mouse.ty = ndc.y;
     if (busy(e.target) || SM.afterP > 0.5 || T < INTRO) return null;
     ray.setFromCamera(ndc, cam);
     const hit = ray.intersectObjects(shells, false)[0];
-    return hit && hit.object.parent.visible && hit.object.parent.parent === scene ? hit.object.userData.block : null;
+    return hit && hit.object.parent.visible ? hit.object.userData.block : null;
   }
   addEventListener('pointermove', e => {
     const b = pick(e); if (b !== hovered) { hovered = b; if (b) { b.hopV = Math.max(b.hopV, 2.2); b.wake = 1.6; } }
@@ -284,71 +266,58 @@ export function mountWorld(canvas, opt = {}) {
   }, { passive: true });
   addEventListener('pointerdown', e => { const b = pick(e); if (b) { b.hopV = 3.4; b.wake = 2.4; b.blink = 0; } });
 
-  // ---------------------------------------------------------------- the clock
-  let T = reduced ? INTRO : 0, last = performance.now(), textCalled = false, doneCalled = false, running = true, paused = false, frameN = 0;
-  const skip = () => { if (T < INTRO) T = INTRO - 0.001; };
-  if (!reduced) { for (const ev of ['keydown', 'wheel', 'touchstart']) addEventListener(ev, skip, { once: true, passive: true }); addEventListener('pointerdown', skip, { once: true }); }
+  // ---------------------------------------------------------------- the clock (waits at the first frame until go())
+  let T = reduced ? INTRO : 0, last = performance.now(), textCalled = false, doneCalled = false, running = true, paused = false, frameN = 0, waiting = !!opt.wait && !reduced;
+  const skip = () => { if (!waiting && T < INTRO) T = INTRO - 0.001; };
+  function go() {
+    if (!waiting) return; waiting = false; last = performance.now();
+    setTimeout(() => { for (const ev of ['keydown', 'wheel', 'touchstart', 'pointerdown']) addEventListener(ev, skip, { once: true, passive: true }); }, 900);
+  }
+  if (!opt.wait && !reduced) setTimeout(() => { for (const ev of ['keydown', 'wheel', 'touchstart', 'pointerdown']) addEventListener(ev, skip, { once: true, passive: true }); }, 300);
 
-  const look = new THREE.Vector3(), heroPos = new THREE.Vector3(), ctrl = new THREE.Vector3(), exitLook = new THREE.Vector3();
+  const look = new THREE.Vector3();
   let fovNow = 22;
   function update(dt, now) {
-    if (T < INTRO + 1) T += dt;
+    if (!waiting && T < INTRO + 1) T += dt;
     const t = T, s = now / 1000, inIntro = t < INTRO && !reduced;
     for (const k of ['heroP', 'howF', 'afterP']) SM[k] += (S[k] - SM[k]) * Math.min(1, dt * (reduced ? 60 : 5.5));
     const { heroP, howF, afterP } = SM;
-    // light: the room is dark until its ceiling flickers on
-    const lit = reduced ? 1 : out3(seg(t, T_TURN[0], T_TURN[0] + 0.9));          // the room comes alive
-    const day = reduced ? 1 : out3(seg(t, 5.3, 7.2));                            // the island's light, as you step out
-    hemi.intensity = LIGHT.hemi * (0.03 * lit * (1 - day) + day); key.intensity = LIGHT.key * day; rim.intensity = LIGHT.rim * day;
-    shell.envMapIntensity = 0.9 * Math.max(day, 0.05); scene.environmentIntensity = Math.max(day, 0.04 * lit);
-    const ex = reduced ? 1 : io(seg(t, T_EXIT[0], T_EXIT[1]));
-    const fg = reduced ? 1 : sm(seg(t, 4.6, 6.6)); scene.fog.near = lerp(1.2, 18, fg); scene.fog.far = lerp(12, 70, fg);
+    // light: eyes first, then the world comes up as you pull back
+    const lit = reduced ? 1 : out3(seg(t, 0.9, 2.6));
+    hemi.intensity = LIGHT.hemi * lit; key.intensity = LIGHT.key * lit; rim.intensity = LIGHT.rim * lit;
+    shell.envMapIntensity = 0.9 * lit; scene.environmentIntensity = lit;
     mouse.x += (mouse.tx - mouse.x) * Math.min(1, dt * 3); mouse.y += (mouse.ty - mouse.y) * Math.min(1, dt * 3);
     // ---- the camera
-    let fov = 22, ox, oy;
     if (inIntro) {
-      walkCam(t); room.updateMatrixWorld(); camW.copy(camL).applyMatrix4(room.matrixWorld); lookW.copy(lookL).applyMatrix4(room.matrixWorld);
-      if (ex <= 0) { cam.position.copy(camW); look.copy(lookW); fov = lerp(46, 22, sm(seg(t, 5.7, 7.7))); ox = 0; oy = 0; }
-      else {
-        posOf(K.hero, heroPos);
-        exitLook.copy(lookW);
-        ctrl.copy(camW).lerp(heroPos, 0.55); ctrl.y = Math.max(camW.y, heroPos.y) + 0.6;
-        const a = 1 - ex; cam.position.set(a * a * camW.x + 2 * a * ex * ctrl.x + ex * ex * heroPos.x, a * a * camW.y + 2 * a * ex * ctrl.y + ex * ex * heroPos.y, a * a * camW.z + 2 * a * ex * ctrl.z + ex * ex * heroPos.z);
-        look.lerpVectors(exitLook, K.hero.t, sm(seg(ex, 0, 0.85)));
-        fov = lerp(46, 22, sm(seg(t, 5.7, 7.7))); ox = K.hero.ox * ex; oy = K.hero.oy * ex;
-      }
-    } else {
-      if (afterP > 0.001) mix(K.sell, K.away, sm(afterP));
-      else if (howF > 0.001) {
-        const f = howF;
-        if (f < 0.75) mix(K.launch, K.launch, 0);
-        else if (f < 1.35) mix(K.launch, K.rent, sm(seg(f, 0.75, 1.35)));
-        else if (f < 1.75) mix(K.rent, K.rent, 0);
-        else if (f < 2.35) mix(K.rent, K.join, sm(seg(f, 1.75, 2.35)));
-        else if (f < 2.75) mix(K.join, K.join, 0);
-        else if (f < 3.35) mix(K.join, K.sell, sm(seg(f, 2.75, 3.35)));
-        else mix(K.sell, K.sell, 0);
-        C.az += Math.sin(f * Math.PI) * 0.04;
-      } else mix(K.hero, K.launch, sm(heroP));
-      const lk = coarse ? 0 : seg(t, INTRO - 0.2, INTRO + 0.8);
-      const az = C.az + mouse.x * 0.05 * lk, el = C.el + mouse.y * 0.03 * lk;
-      cam.position.set(C.t.x + C.d * Math.cos(el) * Math.sin(az), C.t.y + C.d * Math.sin(el), C.t.z + C.d * Math.cos(el) * Math.cos(az));
-      look.copy(C.t); ox = C.ox; oy = C.oy;
-    }
-    if (fov !== fovNow) { fovNow = fov; cam.fov = fov; cam.updateProjectionMatrix(); }
+      if (t < T_OUT[0]) mix(K.start, K.start, 0);
+      else if (t < T_OUT[1]) mix(K.start, K.far, io(seg(t, T_OUT[0], T_OUT[1])));
+      else if (t < T_DRIFT[1]) mix(K.far, K.far2, sine(seg(t, T_DRIFT[0], T_DRIFT[1])));
+      else mix(K.far2, K.hero, io(seg(t, T_IN[0], T_IN[1])));
+    } else if (afterP > 0.001) mix(K.sell, K.away, sm(afterP));
+    else if (howF > 0.001) {
+      const f = howF;
+      if (f < 0.75) mix(K.launch, K.launch, 0);
+      else if (f < 1.35) mix(K.launch, K.rent, sm(seg(f, 0.75, 1.35)));
+      else if (f < 1.75) mix(K.rent, K.rent, 0);
+      else if (f < 2.35) mix(K.rent, K.join, sm(seg(f, 1.75, 2.35)));
+      else if (f < 2.75) mix(K.join, K.join, 0);
+      else if (f < 3.35) mix(K.join, K.sell, sm(seg(f, 2.75, 3.35)));
+      else mix(K.sell, K.sell, 0);
+      C.az += Math.sin(f * Math.PI) * 0.04;
+    } else mix(K.hero, K.launch, sm(heroP));
+    const lk = coarse ? 0 : seg(t, INTRO - 0.2, INTRO + 0.8);
+    const az = C.az + mouse.x * 0.05 * lk, el = C.el + mouse.y * 0.03 * lk;
+    cam.position.set(C.t.x + C.d * Math.cos(el) * Math.sin(az), C.t.y + C.d * Math.sin(el), C.t.z + C.d * Math.cos(el) * Math.cos(az));
+    look.copy(C.t);
+    if (C.fov !== fovNow) { fovNow = C.fov; cam.fov = C.fov; }
     cam.lookAt(look);
-    cam.setViewOffset(W, H, W * ox, H * oy, W, H);
-    // ---- the room: lit by the walker's lamp, alive while you're in it, gone once you're out
-    room.visible = inIntro && ex < 0.97; doorB.g.visible = room.visible;
-    if (room.visible) {
-      rackUpdate(t, mouse.x, mouse.y);
-      lamp.position.copy(cam.position).addScaledVector(cam.getWorldDirection(look.clone()), 0.9); lamp.intensity = 1.7 * lit * (1 - day); lamp.distance = 5;
-      eyeLight.intensity = 0.22 * (1 - seg(t, 1.6, 2.6));
-      const db = seg(t, 0.45, 0.6), db2 = seg(t, 0.7, 0.85);
-      doorB.eyes.scale.y = 1 - 0.9 * (Math.sin(db * Math.PI) + Math.sin(db2 * Math.PI));
-      doorB.eyes.position.x = mouse.x * 0.03; doorB.eyes.position.y = mouse.y * 0.02;
-    } else lamp.intensity = 0;
-    // ---- the island's own story: it builds as you leave the room
+    cam.setViewOffset(W, H, W * C.ox, H * C.oy, W, H);
+    // the fog follows the camera out, so far islands fade but never vanish
+    const cd = cam.position.distanceTo(CENTER); scene.fog.near = Math.max(18, cd * 0.85); scene.fog.far = Math.max(70, cd * 2.3);
+    // ---- the archipelago
+    archipelago(t, s, mouse.x, mouse.y, dt);
+    lineM.opacity = 0.12 + 0.1 * seg(t, 2.5, 4.5) + 0.04 * Math.sin(s * 1.3);
+    // ---- srvr's island builds itself as you come back to it
     hero.awakeM.emissiveIntensity = 2.6;
     for (const b of sats) {
       const u = reduced ? 1 : seg(t, b.delay, b.delay + 0.75), y = drop(u);
@@ -365,7 +334,7 @@ export function mountWorld(canvas, opt = {}) {
     fresh.g.position.y = fresh.base.y + (1 - drop(u1)) * 6; fresh.sq = impact(u1);
     { const k = seg(u1, 0.55, 1); fresh.ring.visible = k > 0 && k < 1; fresh.ringM.opacity = 0.42 * (1 - k); fresh.ring.scale.setScalar(fresh.base.s * (0.7 + out3(k) * 1.5)); }
     const e2 = Math.min(sm(seg(howF, 1.05, 1.5)), 1 - 0.6 * sm(seg(howF, 1.95, 2.4)));
-    const cg = reduced ? 1 : out3(seg(t, 6.2, 7.2));
+    const cg = reduced ? 1 : out3(seg(t, 7.9, 8.9));
     for (const c of cables) { const n = c.geometry.index.count; c.geometry.setDrawRange(0, Math.floor(n * cg / 6) * 6); c.visible = cg > 0; }
     pulseM.emissiveIntensity = 2 + e2 * 3;
     for (const p of pulses) {
@@ -374,7 +343,7 @@ export function mountWorld(canvas, opt = {}) {
       const vis = cg >= 1 ? (0.4 + e2 * 0.9) * sm(seg(v, 0, 0.12)) * sm(seg(1 - v, 0, 0.1)) : 0;
       p.visible = vis > 0.01; p.scale.setScalar(Math.max(0.001, vis));
     }
-    pieces.forEach((p, i) => { const u = reduced ? 1 : back(seg(t, 6.9 + i * 0.09, 7.3 + i * 0.09)); p.scale.setScalar(Math.max(0.0001, u)); });
+    pieces.forEach((p, i) => { const u = reduced ? 1 : back(seg(t, 8.4 + i * 0.09, 8.8 + i * 0.09)); p.scale.setScalar(Math.max(0.0001, u)); });
     guests.forEach((p, i) => {
       const inn = back(seg(howF, 2.05 + i * 0.12, 2.4 + i * 0.12)), gone = i % 2 === 0 ? sm(seg(howF, 3.05 + i * 0.1, 3.3 + i * 0.1)) : 0;
       const v = afterP > 0 ? (i % 2 === 0 ? 0 : 1) : inn * (1 - gone);
@@ -383,7 +352,6 @@ export function mountWorld(canvas, opt = {}) {
     // ---- idle life: bob, blink, look, hop, wake, squash
     const idle = reduced ? 0 : seg(t, INTRO - 0.6, INTRO + 0.6);
     for (const b of blocks) {
-      if (b === doorB) continue;
       const isHero = b === hero;
       if (!isHero && !b.land && !reduced) continue;
       const bob = Math.sin(s * 0.9 + b.phase) * 0.035 * (b === fresh ? 1 : idle) * (isHero ? 0.6 : 1);
@@ -395,16 +363,16 @@ export function mountWorld(canvas, opt = {}) {
       else if (s > b.blinkAt) { b.blink = 1; b.blinkAt = s + 2.2 + Math.random() * 4.5; }
       b.blink = Math.max(0, b.blink - dt * 7);
       let sy = 1 - Math.sin(b.blink * Math.PI) * 0.9;
-      if (isHero && inIntro) sy = 1 - 0.9 * Math.sin(seg(t, 8.0, 8.15) * Math.PI);    // it blinks at you as you arrive
+      if (isHero && inIntro) sy = 1 - 0.9 * (Math.sin(seg(t, 0.5, 0.64) * Math.PI) + Math.sin(seg(t, 0.74, 0.88) * Math.PI) + Math.sin(seg(t, 9.15, 9.3) * Math.PI));
       b.eyes.scale.y = sy;
-      b.eyes.position.x = mouse.x * 0.035 * idle; b.eyes.position.y = mouse.y * 0.025 * idle;
+      b.eyes.position.x = mouse.x * 0.035 * Math.max(idle, isHero && t < 1 ? 1 : 0); b.eyes.position.y = mouse.y * 0.025 * Math.max(idle, isHero && t < 1 ? 1 : 0);
       b.wake = Math.max(0, b.wake - dt);
       const awakeNow = b.state === 'on' || b.wake > 0;
       b.awake.visible = awakeNow; b.asleep.visible = !awakeNow && b.state === 'sleep'; b.off.visible = !awakeNow && b.state === 'off';
       const big = hovered === b ? 1.18 : 1; b.eyes.scale.x += (big - b.eyes.scale.x) * Math.min(1, dt * 10);
     }
     folk.forEach((f, i) => { f.rotation.y += Math.sin(s * 0.7 + i * 2) * 0.004 * idle; f.position.y = Math.abs(Math.sin(s * 2.2 + i * 1.7)) * 0.012 * idle; });
-    voxels(dt, reduced ? 1 : out3(seg(t, 5.8, 7.8)));
+    voxels(dt, reduced ? 1 : out3(seg(t, 7.6, 9.2)));
     if (!textCalled && t >= T_TEXT) { textCalled = true; opt.onText && opt.onText(); }
     if (!doneCalled && t >= INTRO) { doneCalled = true; opt.onDone && opt.onDone(); }
   }
@@ -421,10 +389,10 @@ export function mountWorld(canvas, opt = {}) {
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
   if (opt.onReady) opt.onReady();
   return {
-    skip, get t() { return T; }, INTRO,
+    skip, go, get t() { return T; }, INTRO,
     setScroll(o) { Object.assign(S, o); },
-    freeze(t, o) { paused = true; T = t; if (o) { Object.assign(S, o); Object.assign(SM, o); } update(0, performance.now()); r.render(scene, cam); },
-    step(dt, o, now) { paused = true; if (o) { Object.assign(S, o); Object.assign(SM, o); } update(dt, now); r.render(scene, cam); },
+    freeze(t, o) { paused = true; waiting = false; T = t; if (o) { Object.assign(S, o); Object.assign(SM, o); } update(0, performance.now()); r.render(scene, cam); },
+    step(dt, o, now) { paused = true; waiting = false; if (o) { Object.assign(S, o); Object.assign(SM, o); } update(dt, now); r.render(scene, cam); },
     play() { paused = false; }, stop() { running = false; },
   };
 }

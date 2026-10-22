@@ -1,30 +1,63 @@
-// srvr boot: two eyes in the dark until the 3D world is ready, then the intro plays and the page opens.
-// After that one scroll drives everything: smooth (inertia) scrolling, the camera's path through the world, the pinned
-// "how it works" steps, the marquee's speed, the hero's parallax and the veil that dims the world behind the tools.
+// srvr boot: two eyes in the dark while the 3D world loads. Then they fall asleep and wait: "enter" wakes them, starts
+// the calm music (browsers only allow sound after a click) and the intro. After that one scroll drives everything:
+// smooth (inertia) scrolling, the camera's path through the world, the pinned "how it works" steps, the hero's parallax
+// and the veil that dims the world behind the tools.
 const body = document.body, root = document.documentElement, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const canvas = document.getElementById('world');
-let world = null, fell = false;
+const canvas = document.getElementById('world'), enterBtn = document.getElementById('enter');
+const keep = (st => ({ get: k => { try { return st().getItem(k); } catch { return null; } }, set: (k, v) => { try { st().setItem(k, v); } catch {} } }));
+const local = keep(() => localStorage), sess = keep(() => sessionStorage);
+// no gate and no intro on a shared coin link, a section link, a repeat visit in this tab, or with reduced motion
+const quick = reduced || /^\/s\//.test(location.pathname) || location.hash.length > 1 || sess.get('srvr:in') === '1' || new URLSearchParams(location.search).has('skip');
+let world = null, fell = false, ready = false, started = false;
 const text = () => body.classList.add('text');
-const done = () => { text(); body.classList.remove('intro', 'boot'); body.classList.add('ready'); };
+const done = () => { text(); body.classList.remove('intro', 'boot', 'gate'); body.classList.add('ready'); };
 function fallback() {
-  if (fell) return; fell = true;
+  if (fell) return; fell = true; started = true;
   canvas.hidden = true; document.querySelector('.stage .still').hidden = false;
-  body.classList.remove('boot'); body.classList.add('intro'); setTimeout(text, 80); setTimeout(done, 900);
+  body.classList.remove('boot', 'gate'); body.classList.add('intro'); setTimeout(text, 80); setTimeout(done, 900);
 }
 function webgl() { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } }
+
+// ---------------------------------------------------------------- calm music, on by default once you enter; the corner switch mutes it
+const music = document.getElementById('music'), snd = document.getElementById('snd');
+let soundOn = local.get('srvr:sound') !== 'off', fadeRaf = 0;
+function fadeTo(v, ms, then) {
+  cancelAnimationFrame(fadeRaf); const v0 = music.volume, t0 = performance.now();
+  const f = now => { const k = Math.min(1, (now - t0) / ms); music.volume = Math.max(0, Math.min(1, v0 + (v - v0) * k)); if (k < 1) fadeRaf = requestAnimationFrame(f); else if (then) then(); };
+  fadeRaf = requestAnimationFrame(f);
+}
+const showSnd = on => { snd.classList.toggle('on', on); snd.setAttribute('aria-pressed', String(on)); snd.setAttribute('aria-label', on ? 'sound off' : 'sound on'); };
+function playMusic(ms = 2600) { try { music.volume = 0; const p = music.play(); showSnd(true); if (p && p.catch) p.catch(() => showSnd(false)); fadeTo(0.5, ms); } catch { showSnd(false); } }
+snd.addEventListener('click', () => {
+  const on = music.paused || music.volume < 0.05;
+  local.set('srvr:sound', on ? 'on' : 'off'); soundOn = on;
+  if (on) playMusic(1200); else { showSnd(false); fadeTo(0, 600, () => music.pause()); }
+});
+
+// ---------------------------------------------------------------- the gate
+function enter() {
+  if (started || !ready) return; started = true; sess.set('srvr:in', '1');
+  if (soundOn) playMusic();
+  body.classList.add('woke');
+  setTimeout(() => { body.classList.remove('boot', 'gate'); body.classList.add('intro'); if (world) world.go(); }, 420);
+  setTimeout(done, 17000);
+}
+enterBtn.addEventListener('click', enter);
+addEventListener('keydown', e => { if (!started && ready && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); enter(); } });
+
 if (webgl()) {
   import('./world.js').then(m => {
     world = m.mountWorld(canvas, {
-      reduced,
-      onReady: () => { body.classList.remove('boot'); body.classList.add('intro'); if (reduced) done(); },
+      reduced, wait: !quick,
+      onReady: () => { ready = true; if (!quick) { body.classList.add('gate'); enterBtn.hidden = false; try { enterBtn.focus({ preventScroll: true }); } catch {} } },
       onText: text, onDone: done,
     });
     window.__world = world; startTick();
+    if (quick) { started = true; body.classList.remove('boot'); body.classList.add('intro'); world.skip(); if (reduced) done(); }
   }).catch(e => { console.warn('world', e); fallback(); });
 } else fallback();
-// backstops: the page never stays dark
-setTimeout(() => { if (body.classList.contains('boot')) fallback(); }, 7000);
-setTimeout(done, 15000);
+// backstop: if the world never loads, open the page anyway
+setTimeout(() => { if (!ready && !fell) fallback(); }, 9000);
 
 // ---------------------------------------------------------------- smooth scroll
 let lenis = null;
@@ -50,7 +83,6 @@ document.addEventListener('click', e => {
 const nav = document.querySelector('.nav'), links = [...nav.querySelectorAll('a')];
 const heroIn = document.querySelector('.hero-in'), veil = document.getElementById('veil');
 const how = document.getElementById('how'), steps = [...document.querySelectorAll('#hSteps li')], bar = document.getElementById('hBar'), count = document.getElementById('hCount');
-const mq = document.getElementById('mq');
 const prog = document.getElementById('prog');
 // the cursor: a small block that follows, looks where it's heading, and grows on things you can press (mouse only)
 let cur = null, curEyes = null, cx = -100, cy = -100, ctx = -100, cty = -100, cdown = false, cblink = 0;
@@ -87,7 +119,7 @@ function scramble(el) {
   requestAnimationFrame(step);
 }
 const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
-let mqX = 0, lastY = scrollY, vel = 0, lastT = performance.now(), stepOn = 0, ticking = false;
+let lastY = scrollY, vel = 0, lastT = performance.now(), stepOn = 0, ticking = false;
 function startTick() { if (ticking) return; ticking = true; requestAnimationFrame(tick); }
 function tick(now = performance.now()) {
   if (lenis) lenis.raf(now);
@@ -105,8 +137,6 @@ function tick(now = performance.now()) {
   const i = Math.min(3, Math.floor(howP * 4 + 0.0001));
   if (i !== stepOn) { stepOn = i; steps.forEach((li, k) => li.classList.toggle('on', k === i)); count.textContent = `0${i + 1} / 04`; }
   bar.style.transform = `scaleX(${howP.toFixed(4)})`;
-  // the marquee: always drifting, faster (and the other way) when you scroll
-  if (mq) { const w = mq.firstElementChild.offsetWidth || 1; mqX -= (40 + Math.abs(vel) * 0.35) * dt * (vel < -5 ? -1 : 1); mqX = ((mqX % w) - w) % w; mq.style.transform = `translate3d(${mqX.toFixed(1)}px,0,0)`; }
   nav.classList.toggle('solid', y > 40);
   prog.style.transform = `scaleX(${cl(y / Math.max(1, document.documentElement.scrollHeight - H)).toFixed(4)})`;
   if (cur) { cx += (ctx - cx) * 0.24; cy += (cty - cy) * 0.24; const vx = cl((ctx - cx) / 40, -1, 1), vy = cl((cty - cy) / 40, -1, 1);
