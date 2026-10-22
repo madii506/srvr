@@ -38,15 +38,20 @@ snd.addEventListener('click', () => {
 function enter() {
   if (started || !ready) return; started = true; sess.set('srvr:in', '1');
   if (soundOn) playMusic();
+  if (world && world.peek) world.peek(true);   // its eyes open the moment you press
   body.classList.add('woke');
   setTimeout(() => { body.classList.remove('boot', 'gate'); body.classList.add('intro'); if (world) world.go(); }, 420);
   setTimeout(done, 17000);
 }
 enterBtn.addEventListener('click', enter);
+// no words on the way in: a click anywhere in the room wakes it too
+document.getElementById('boot').addEventListener('click', () => { if (body.classList.contains('gate')) enter(); });
+// hover "enter" and the sleeping block opens its eyes to look at you
+for (const [ev, on] of [['pointerenter', true], ['pointerleave', false], ['focus', true], ['blur', false]]) enterBtn.addEventListener(ev, () => { if (!started && world && world.peek) world.peek(on); });
 addEventListener('keydown', e => { if (!started && ready && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); enter(); } });
 
 if (webgl()) {
-  import('./world.js').then(m => {
+  import('./world.js?v=6').then(m => {
     world = m.mountWorld(canvas, {
       reduced, wait: !quick,
       onReady: () => { ready = true; if (!quick) { body.classList.add('gate'); enterBtn.hidden = false; try { enterBtn.focus({ preventScroll: true }); } catch {} } },
@@ -92,7 +97,7 @@ if (matchMedia('(pointer: fine)').matches && !reduced) {
     ctx = e.clientX; cty = e.clientY; if (cx < -50) { cx = ctx; cy = cty; }
     const t = e.target, txt = t.closest && t.closest('input,textarea');
     cur.classList.toggle('text', !!txt);
-    cur.classList.toggle('hot', !txt && !!((t.closest && t.closest('a,button,summary,select,.brow,.pic,[role=button],[data-open]')) || root.classList.contains('over-block')));
+    cur.classList.toggle('hot', !txt && !!((t.closest && t.closest('a,button,summary,select,.brow,.pic,[role=button],[data-open]')) || root.classList.contains('over-block') || (body.classList.contains('gate') && t.closest && t.closest('#boot'))));
     cur.classList.remove('away');
   }, { passive: true });
   addEventListener('pointerdown', () => { cdown = true; }); addEventListener('pointerup', () => { cdown = false; });
@@ -120,6 +125,11 @@ function scramble(el) {
 }
 const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 let lastY = scrollY, vel = 0, lastT = performance.now(), stepOn = 0, ticking = false;
+// the sections after "how it works", in order; the camera has one shot for each and a last one for the end
+const after = ['launch', 'servers', 'join', 'ping', 'owners', 'faq', 'end'].map(id => document.getElementById(id)).filter(Boolean);
+// when something on the page makes the world react, the veil lifts for a moment so you see it
+let flash = 0;
+document.addEventListener('srvr:react', e => { if (world && world.react) world.react(e.detail || {}); flash = 1; });
 function startTick() { if (ticking) return; ticking = true; requestAnimationFrame(tick); }
 function tick(now = performance.now()) {
   if (lenis) lenis.raf(now);
@@ -128,11 +138,24 @@ function tick(now = performance.now()) {
   const howTop = how.getBoundingClientRect().top + scrollY, howH = how.offsetHeight;
   const heroP = cl(y / Math.max(1, howTop)), howP = cl((y - howTop) / Math.max(1, howH - H)), afterP = cl((y - (howTop + howH - H)) / (H * 0.9));
   const howF = y < howTop ? 0 : howP * 4;
-  if (world) world.setScroll({ heroP, howF: y < howTop ? 0 : Math.max(0.0011, howF), afterP });
+  // which section the middle of the screen is in (0 = launch … 6 = the end), and how close it is to a border between two
+  const sy = scrollY, c = sy + H * 0.5; let secF = 0, dip = 0, endP = 0;
+  if (afterP > 0) {
+    const tops = after.map(el => el.getBoundingClientRect().top + sy); tops.push(document.documentElement.scrollHeight);
+    for (let k = 0; k < after.length; k++) if (c >= tops[k] && c < tops[k + 1]) secF = k + (c - tops[k]) / Math.max(1, tops[k + 1] - tops[k]) - 0.5;
+    if (c >= tops[after.length]) secF = after.length - 1;
+    secF = cl(secF, 0, after.length - 1);
+    for (let k = 1; k < after.length; k++) { const x = (c - tops[k]) / H; dip = Math.max(dip, Math.exp(-(x * x) / 0.05)); }
+    endP = cl((sy + H - tops[after.length - 1]) / (H * 0.75));
+  }
+  flash = Math.max(0, flash - dt * 0.7);
+  // the veil: the world stays bright for the story, dims behind the tools, opens between sections and at the end
+  const vo = afterP * cl(0.86 - 0.44 * dip - 0.34 * flash) * (1 - endP);
+  veil.style.opacity = vo.toFixed(3);
+  const ss = { heroP, howF: y < howTop ? 0 : Math.max(0.0011, howF), afterP, secF, vis: 1 - vo }; window.__ss = ss;
+  if (world) world.setScroll(ss);
   // hero copy drifts up and fades as the camera moves in
   heroIn.style.setProperty('--py', (-y * 0.32).toFixed(1) + 'px'); heroIn.style.setProperty('--po', cl(1 - y / (H * 0.6)).toFixed(3));
-  // the veil: the world stays bright for the story, then dims behind the tools
-  veil.style.opacity = (0.84 * afterP).toFixed(3);
   // how it works: which step, and how far along
   const i = Math.min(3, Math.floor(howP * 4 + 0.0001));
   if (i !== stepOn) { stepOn = i; steps.forEach((li, k) => li.classList.toggle('on', k === i)); count.textContent = `0${i + 1} / 04`; }
@@ -190,8 +213,8 @@ for (const h of document.querySelectorAll('h2')) {
 }
 const rv = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('vis'); if (e.target.matches('.eb') && !reduced) scramble(e.target); rv.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
 document.querySelectorAll('h2').forEach(h => { h.classList.add('reveal'); rv.observe(h); });
-document.querySelectorAll('.band .eb, .launch, .board, .join, .pingf, .chips, .own, .faq details, .how .eb, .hsteps, .hbar, .how .legend').forEach((el, i) => {
+document.querySelectorAll('.band .eb, .launch, .board, .join, .pingf, .chips, .own, .faq details, .how .eb, .hsteps, .hbar, .how .legend, .end-in').forEach((el, i) => {
   el.classList.add('reveal'); if (el.matches('.faq details')) el.style.transitionDelay = ((i % 10) * 0.05) + 's'; rv.observe(el);
 });
 
-import('./app.js').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));
+import('./app.js?v=6').then(m => m.start({ get lenis() { return lenis; } })).catch(e => console.error('app', e));

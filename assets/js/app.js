@@ -159,7 +159,7 @@ function launch() {
     const r = await api('/api/ping?q=' + encodeURIComponent(v), { timeout: 15000 });
     if (srv.value.trim() !== v) return;
     if (!r.ok) { srvSt.className = 'srvst bad'; srvSt.textContent = r.error; pvGl.className = 'gl off'; pvSt.textContent = 'not a server address'; return; }
-    pvGl.className = 'gl ' + r.mood; pvSt.textContent = r.online ? `${r.players}/${r.max} on now` : 'offline right now';
+    pvGl.className = 'gl ' + r.mood; pvSt.textContent = r.online ? `${r.players}/${r.max} on now` : 'offline right now'; react({ who: 'fresh', mood: r.mood });
     srvSt.className = 'srvst ' + (r.online ? 'ok' : 'warn'); srvSt.textContent = r.online ? `online · ${r.players}/${r.max} on · ${r.version || 'java edition'}` : 'offline right now. you can still launch; its block will sleep until it’s up.'; };
   srv.addEventListener('blur', pingSrv); srv.addEventListener('input', () => { clearTimeout(pingT); pingT = setTimeout(pingSrv, 900); });
   // a first buy, priced on a fresh curve by pump.fun's own math
@@ -219,6 +219,9 @@ function launch() {
   });
 }
 
+// the 3D world behind the page answers: srvr's block (or your new one) wakes, hops, sends a ring out
+const react = o => document.dispatchEvent(new CustomEvent('srvr:react', { detail: o }));
+
 // ---------------------------------------------------------------- 03 the board, and the coin pickers that use it
 let COINS = [], SOLUSD = null, boardAt = 0;
 const glyph = (m, cls = '') => `<i class="gl ${m || 'wait'} ${cls}"></i>`;
@@ -271,7 +274,7 @@ function join() {
     nT = setTimeout(async () => {
       const my = ++nSeq; nmSt.className = ''; nmSt.textContent = 'looking up ' + v + '…';
       const r = await api('/api/join?name=' + encodeURIComponent(v)); if (my !== nSeq || nm.value !== v) return;
-      if (r.ok && r.uuid) { headImg.onload = () => head.classList.add('on'); headImg.onerror = () => head.classList.remove('on'); headImg.src = `https://mc-heads.net/avatar/${r.uuid}/64`; nmSt.className = 'ok'; nmSt.textContent = `found ${r.name}`; }
+      if (r.ok && r.uuid) { headImg.onload = () => head.classList.add('on'); headImg.onerror = () => head.classList.remove('on'); headImg.src = `https://mc-heads.net/avatar/${r.uuid}/64`; nmSt.className = 'ok'; nmSt.textContent = `found ${r.name}`; react({ mood: 'on' }); }
       else { nmSt.className = 'bad'; nmSt.textContent = r.error || `no java edition player called ${v}`; }
     }, 450);
   });
@@ -307,12 +310,13 @@ function ping() {
   let liveHost = '', liveAt = 0;
   setInterval(() => { const a = card.querySelector('[data-ago]'); if (a && liveAt) { const sec = Math.round((Date.now() - liveAt) / 1000); a.textContent = sec < 3 ? 'just now' : sec + 's ago'; } }, 1000);
   setInterval(() => { const r = $('#ping').getBoundingClientRect(); if (liveHost && !document.hidden && r.top < innerHeight && r.bottom > 0) run(liveHost, true); }, 15000);
-  async function run(v, quiet) {
+  async function run(v, quiet, auto) {
     v = (v || q.value).trim(); if (!v) { q.focus(); return; } if (!quiet) q.value = v;
     if (!quiet) busyBtn(btn, true, 'pinging'); const r = await api('/api/ping?q=' + encodeURIComponent(v), { timeout: 15000 }); if (!quiet) busyBtn(btn, false);
     if (quiet && v !== liveHost) return;
     card.hidden = false;
-    if (r.ok) { liveHost = r.host; liveAt = Date.now(); if (!quiet) { try { localStorage.setItem(HK, JSON.stringify([r.host, ...hist().filter(x => x !== r.host)].slice(0, 4))); } catch {} drawChips(); } }
+    if (!quiet) react({ mood: r.ok ? r.mood : 'off' });
+    if (r.ok) { liveHost = r.host; liveAt = Date.now(); if (!quiet && !auto) { try { localStorage.setItem(HK, JSON.stringify([r.host, ...hist().filter(x => x !== r.host)].slice(0, 4))); } catch {} drawChips(); } }
     else if (!quiet) liveHost = '';
     if (!r.ok) { card.innerHTML = `${glyph('off', 'huge')}<div><h3>${esc(v)}</h3><p class="err" style="margin-top:10px">${esc(r.error)}</p></div>`; return; }
     card.innerHTML = `${glyph(r.mood, 'huge')}<div><div class="hd">${r.icon ? `<img src="${esc(r.icon)}" alt="">` : ''}<h3>${esc(r.host)}</h3><span class="st ${r.mood}">${moodTxt[r.mood]}</span></div>
@@ -322,6 +326,13 @@ function ping() {
       ${r.coins && r.coins.length ? `<p class="idle-note" style="margin-top:14px">on srvr: ${r.coins.map(c => `<button class="lk" type="button" data-open="${esc(c.mint)}">$${esc(c.symbol)}</button>`).join(' ')}</p>` : ''}</div>`;
   }
   f.addEventListener('submit', e => { e.preventDefault(); run(); });
+  // the first time you reach this section it pings a real server on its own (your last one, or the first example),
+  // so it opens on a live answer instead of an empty box
+  const first = new IntersectionObserver(es => {
+    if (!es.some(e => e.isIntersecting)) return; first.disconnect();
+    if (card.hidden && !q.value.trim()) run(hist()[0] || DEF[0], false, true);
+  }, { rootMargin: '0px 0px -30% 0px' });
+  first.observe($('#ping'));
   $('#pChips').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) run(b.dataset.q); });
 }
 
