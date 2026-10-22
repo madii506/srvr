@@ -2,10 +2,19 @@
 //   POST {mint, wallet, name, ts, sig}  sig = the wallet's signature over msg() below (a message, not a transaction).
 //        Checks the signature, that the wallet holds the coin right now, and that the name is a real player. Free.
 //   GET  ?mint=&wallet=                 the name this wallet has linked to that coin, if any
+//   GET  ?name=<player>                 a real Java Edition player? (name and profile id, for the head preview)
 // The server reads the result from /api/whitelist, which checks every wallet's balance again on each sync.
 const L = require('./_lib');
 const msg = (mint, name, wallet, ts) => `srvr · let me in\ncoin: ${mint}\nplayer: ${name}\nwallet: ${wallet}\ntime: ${ts}`;
 module.exports = async (req, res) => {
+  // GET ?name=<player>: is that a real Java Edition player? (the page shows their head as you type)
+  if (req.method === 'GET' && L.query(req).name != null) {
+    const name = String(L.query(req).name || '').trim();
+    if (!L.NAME.test(name)) return L.send(res, 200, { ok: false, error: '3–16 letters, numbers or underscores.' });
+    if (L.limited('name:' + L.ip(req), 60, 60000)) return L.send(res, 200, { ok: false, error: 'Too many lookups. Wait a moment.' });
+    try { const p = await L.profile(name); return L.send(res, 200, p ? { ok: true, name: p.name, uuid: L.dashed(p.id) } : { ok: false, error: `no java edition player called ${name}` }, L.CACHE(600)); }
+    catch { return L.send(res, 200, { ok: false, error: 'Mojang didn’t answer just now.' }); }
+  }
   if (!L.dbReady()) return L.send(res, 200, { ok: false, error: 'srvr’s records are offline. Try again shortly.' });
   if (req.method === 'GET') {
     const { mint, wallet } = L.query(req);
